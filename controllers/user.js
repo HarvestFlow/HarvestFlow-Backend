@@ -63,6 +63,7 @@ export async function createUser(req, res) {
 
         buisnessType,
         volumeApprovisionnement,
+         
         
 
         // Ajout pour Distributor
