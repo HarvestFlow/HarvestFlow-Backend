@@ -1,6 +1,8 @@
 import express from 'express';
 import mongoose from 'mongoose';
 import userRoute from './routes/user.js';  // Ensure the '.js' extension is used for imports
+import cookieParser from 'cookie-parser';
+import cors from 'cors';
 
 const app = express();
 app.use(express.json()); // Middleware to parse JSON
@@ -8,6 +10,16 @@ app.use(express.json()); // Middleware to parse JSON
 // Define variables directly
 const PORT = 5000;
 const MONGO_URI = 'mongodb://localhost:27017/harvestflow';
+
+// Middleware - CORS should be before routes
+app.use(cors({
+  origin: 'http://localhost:3000', // Allow requests from the front-end
+  methods: ['GET', 'POST', 'PUT', 'DELETE'], // Allow these HTTP methods
+  credentials: true, // If you need to send cookies with requests
+}));
+
+// Middleware - Parse cookies
+app.use(cookieParser()); // Active la gestion des cookies
 
 // Connect to MongoDB
 mongoose.connect(MONGO_URI, {
@@ -22,6 +34,7 @@ app.get('/', (req, res) => {
   res.send('API Running...');
 });
 
+// Define routes
 app.use('/user', userRoute);
 
 // Handle 404

@@ -4,15 +4,12 @@ import bcrypt from "bcryptjs";
 import User from "../models/user.js";
 import { auth, invalidateRefreshToken } from '../middlewares/auth.js';
 import { signAccessToken, signRefreshToken , verifyRefreshToken} from "../middlewares/auth.js";
-import jwt from "jsonwebtoken";
-import nodemailer from "nodemailer";
+
 import { validationResult } from "express-validator";
 import mongoose from "mongoose";
 import distributor from "../models/distributor.js";
 import farmer from "../models/farmer.js";
 import transporter from "../models/transporter.js";
-
-
 
 
 
@@ -53,7 +50,7 @@ export async function createUser(req, res) {
         email,
         password,
         companyname,
-        certification,
+        
         role,
 
         productionType,
@@ -68,6 +65,8 @@ export async function createUser(req, res) {
 
         // Ajout pour Distributor
       } = req.body;
+      console.log("Data received in request body:", req.body);  // Affiche tout le corps de la requête
+
   
       // 3️⃣ **Vérification si l'utilisateur existe déjà**
       const existingUser = await (role === "farmer" ? farmer 
@@ -77,8 +76,7 @@ export async function createUser(req, res) {
       if (existingUser) {
         return res.status(400).json({ message: "Email already registered" });
       }
-      //const certificationFile = req.file.path;
-
+      
       // 4️⃣ **Hachage du Mot de Passe**
       const hashPass = await bcrypt.hash(password, 10);
       let user;
@@ -94,7 +92,7 @@ export async function createUser(req, res) {
             email,
             password: hashPass,
             companyname,
-            //certification: certificationFile, // Ajoutez le chemin du fichier de certification
+          //  certification: certificationFile, // Ajoutez le chemin du fichier de certification
             role,
             country,
             address,
@@ -113,7 +111,7 @@ export async function createUser(req, res) {
             email,
             password: hashPass,
             companyname,
-           // certification: certificationFile, // Ajoutez le chemin du fichier de certification
+            certification: certificationFile, // Ajoutez le chemin du fichier de certification
             role,
             country,
             address,
@@ -132,7 +130,7 @@ export async function createUser(req, res) {
             email,
             password: hashPass,
             companyname,
-           // certification: certificationFile, // Ajoutez le chemin du fichier de certification
+            certification: certificationFile, // Ajoutez le chemin du fichier de certification
             role,
             country,
             address,
@@ -168,19 +166,7 @@ export async function createUser(req, res) {
       return res.status(500).json({ message: "Error creating user", error });
     }
   }
-  export async function getUserById(req, res) {
-    try {
-      const userId = req.params.userId; // Accéder à la propriété userId de req.params
-      const user = await User.findById(userId);
-      if (!user) {
-        return res.status(404).json({ error: 'User not found' });
-      }
-      res.status(200).json({ user });
-    } catch (error) {
-      console.error(error);
-      res.status(500).json({ error: 'Internal server error' });
-    }
-  }
+
   export async function addAdmin(req, res) {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
@@ -215,18 +201,22 @@ export async function createUser(req, res) {
   
       // Générer des tokens
       const accessToken = await signAccessToken(admin.id);
-      const refreshToken = await signRefreshToken(admin.id);
   
       // Envoyer les tokens dans la réponse
       await sendWelcomeEmail(admin);
-  
-      return res.status(201).json({ admin, accessToken, refreshToken });
+
+      res.cookie("accessToken", accessToken, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "Strict",
+        maxAge: 86400000, // Expire dans 24 heures
+    });
+      return res.status(201).json({ admin, accessToken });
     } catch (error) {
       console.log(error);
       return res.status(500).json({ message: "Error adding admin", error });
     }
   }
-  
   export async function login(req, res, next) {
     try {
       const { email, password } = req.body;
@@ -287,7 +277,9 @@ export async function createUser(req, res) {
       return res.status(500).json({ message: "Error logging out", error });
     }
   }
-  export async function updateUser(req, res) {
+
+
+export async function updateUser(req, res) {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
       return res.status(400).json({ errors: errors.array() });
@@ -365,4 +357,115 @@ export async function deleteUser(req, res) {
     }
   }  
   
+  export async function getAllAdmins(req, res) {
+    try {
+      const { role } = req.auth; 
   
+      if (role !== 'superAdmin') {
+        return res.status(403).json({ message: 'Unauthorized action' });
+      }
+  
+      const users = await User.find({ role: 'admin' });
+  
+      return res.status(200).json({ users });
+    } catch (error) {
+      console.error(error);
+      return res.status(500).json({ message: 'Error fetching admins', error });
+    }
+  }
+
+  export async function getProfile(req, res) {
+    const userId = req.auth.userId;
+  
+    if (!userId) {
+      return res.status(400).json({ error: "User ID is missing" });
+    }
+  
+    try {
+      const profile = await User.findById(userId);
+      if (!profile) {
+        return res.status(404).json({ error: "User not found" });
+      }
+  
+      return res.status(200).json(profile);
+    } catch (error) {
+      return res.status(500).json({ error: error.message });
+    }
+  }
+  
+  // Fonction pour supprimer un utilisateur par le superAdmin
+
+ 
+  export async function uploadProfileImage(req, res) {
+    try {
+      if (!req.file) {
+        console.log('Aucun fichier trouvé dans la requête.');
+        return res.status(400).send('Aucun fichier téléchargé.');
+      }
+  
+      const imageUrl = `http://localhost:5000/uploads/${req.file.filename}`;
+      console.log(`L'URL de l'image est : ${imageUrl}`);
+  
+      const user = await User.findByIdAndUpdate(
+        req.userId, // Assurez-vous que req.userId est valide
+        { imageUser: imageUrl },
+        { new: true }
+      );
+  
+      if (!user) {
+        console.log(`Utilisateur non trouvé avec l'ID: ${req.userId}`);
+        return res.status(404).send('Utilisateur non trouvé.');
+      }
+  
+      res.json({ imageUrl: user.imageUser });
+    } catch (error) {
+      console.error('Erreur lors de la mise à jour de l\'image :', error.message);
+      res.status(500).send('Erreur lors de la mise à jour de l\'image.');
+    }
+  }
+  
+  export function updateProfile(req, res) {
+    const updateData = req.body;
+  
+    if (!mongoose.Types.ObjectId.isValid(req.auth.userId)) {
+      return res.status(400).json({ error: 'Invalid userId' });
+    }
+  
+    if (req.file && req.file.filename) {
+      const imagePath = req.file.filename;
+      updateData.imageUser = imagePath;
+    }
+  
+    User.findById(req.auth.userId)
+      .then((user) => {
+        if (!user) {
+          return res.status(404).json({ error: 'User not found' });
+        }
+  
+        if (user.role === 'challenger') {
+          challenger
+            .findOneAndUpdate({ _id: req.auth.userId }, updateData, { new: true })
+            .then((updatedChallenged) => {
+              res.status(200).json(updatedChallenged);
+            })
+            .catch((err) => {
+              res.status(500).json({ error: err });
+            });
+        } else if (user.role === 'company') {
+          Company.findOneAndUpdate({ _id: req.auth.userId }, updateData, { new: true })
+            .then((updatedCompany) => {
+              res.status(200).json(updatedCompany);
+            })
+            .catch((err) => {
+              res.status(500).json({ error: err });
+            });
+        }
+      })
+      .catch((err) => {
+        res.status(500).json({ error: err });
+      });
+  }
+  
+////////////////////////////////////////////////////////
+     
+////////////////////////////////////////////////////////

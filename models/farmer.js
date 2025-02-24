@@ -5,14 +5,15 @@ import User from "../models/user.js";
 const farmerSchema = new Schema(
   {
     productionType: {
-        type: String,
-        enum: ["Bio", "Conventionnel","Raisonné"],
-        required: false,
-      },
+      type: [String],  // Array of strings
+      enum: ["Bio", "Conventionnel", "Raisonné"],  // Options that can be selected
+      required: false,  // Not required since it's optional
+    },
+    
 
       productionMethod: {
-        type: String,
-        enum: ["Fruits", "legumes","Cereales"],
+        type: [String],  // Array of strings
+        enum: ["Bio", "Conventionnel", "Raisonné"],  // Options that can be selected
         required: false,
       },
     

@@ -4,6 +4,7 @@ import jwt from "jsonwebtoken";
 import createError from "http-errors";
 import User from '../models/user.js';
 import cookieParser from 'cookie-parser'; // Ajoute le support des cookies
+import mongoose from "mongoose";
 
 export function signAccessToken(userId) {
   return new Promise((resolve, reject) => {
@@ -25,7 +26,6 @@ export function signAccessToken(userId) {
   });
 }
 
-
 export async function auth(req, res, next) {
   try {
     // Récupérer le token depuis le cookie
@@ -33,7 +33,7 @@ export async function auth(req, res, next) {
 
     if (!token) {
       console.log("Token manquant");
-      throw createError.Unauthorized('Token missing');
+      throw createError.Unauthorized('Token missing');  // Erreur si le token est manquant
     }
 
     // Vérifier et décoder le token
@@ -46,7 +46,7 @@ export async function auth(req, res, next) {
     const user = await User.findById(userId);
     if (!user) {
       console.log("Utilisateur non trouvé");
-      throw createError.Unauthorized('User not found');
+      throw createError.Unauthorized('User not found');  // Erreur si l'utilisateur n'est pas trouvé
     }
 
     // Ajouter l'authentification à req.auth
@@ -56,16 +56,12 @@ export async function auth(req, res, next) {
     };
 
     console.log("Utilisateur authentifié:", user.role);
-    next();
+    next();  // Passer au middleware suivant si l'utilisateur est authentifié
   } catch (error) {
     console.error("Erreur d'authentification:", error);
-    res.status(401).json({ error: error.message });
+    res.status(401).json({ error: error.message });  // Renvoie une erreur 401 si l'authentification échoue
   }
 }
-
-
-
-
 
 
 
