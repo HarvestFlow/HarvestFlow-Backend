@@ -1,6 +1,8 @@
 import express from 'express';
 import mongoose from 'mongoose';
 import userRoute from './routes/user.js';  // Ensure the '.js' extension is used for imports
+import parcelleRoute from './routes/parcelle.js';  // Ensure the '.js' extension is used for imports
+
 import cookieParser from 'cookie-parser';
 import cors from 'cors';
 
@@ -36,6 +38,7 @@ app.get('/', (req, res) => {
 
 // Define routes
 app.use('/user', userRoute);
+app.use('/parcelle', parcelleRoute);
 
 // Handle 404
 app.use((req, res, next) => {
