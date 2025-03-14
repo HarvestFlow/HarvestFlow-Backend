@@ -50,6 +50,35 @@ export const createParcel = async (req, res) => {
       });
     }
   };
+  export const updateShape = async (req, res) => {
+    const { userId, shapeId } = req.params;
+    const { cropType, plantingDate, growthStage, estimatedYield, expectedHarvestDate } = req.body;
+  
+    try {
+      const parcelle = await Parcelle.findOne({ userId });
+      
+      if (!parcelle) {
+        return res.status(404).json({ message: "Parcel not found" });
+      }
+  
+      const shape = parcelle.shapes.id(shapeId);
+      if (!shape) {
+        return res.status(404).json({ message: "Shape not found" });
+      }
+  
+      // Mise à jour des attributs de la shape
+      shape.properties.cropType = cropType;
+      shape.properties.plantingDate = plantingDate;
+      shape.properties.growthStage = growthStage;
+      shape.properties.estimatedYield = estimatedYield;
+      shape.properties.expectedHarvestDate = expectedHarvestDate;
+  
+      await parcelle.save();
+      res.status(200).json(shape);
+    } catch (error) {
+      res.status(500).json({ message: "Error updating shape", error });
+    }
+  };
 // Get a Parcelle by userId
 export async function getParcelleByUserId(req, res) {
     try {

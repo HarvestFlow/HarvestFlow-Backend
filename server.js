@@ -2,7 +2,8 @@ import express from 'express';
 import mongoose from 'mongoose';
 import userRoute from './routes/user.js';  // Ensure the '.js' extension is used for imports
 import parcelleRoute from './routes/parcelle.js';  // Ensure the '.js' extension is used for imports
-
+import path from 'path';
+import { fileURLToPath } from 'url';
 import cookieParser from 'cookie-parser';
 import cors from 'cors';
 
@@ -36,6 +37,10 @@ app.get('/', (req, res) => {
   res.send('API Running...');
 });
 
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 // Define routes
 app.use('/user', userRoute);
 app.use('/parcelle', parcelleRoute);

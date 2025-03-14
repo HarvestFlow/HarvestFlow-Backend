@@ -30,6 +30,15 @@ VerifyAnswersAndSendCode,
 } from "../controllers/userVerif.js";
 import multer from "multer";
 
+
+
+import {
+  updateFarmerProfile
+  } from "../controllers/farmer.js";
+
+
+
+
 const router = express.Router();
 
 //////////////// USER ACCES TO PLATFORM
@@ -50,7 +59,7 @@ router.put('/:userId',auth, updateUser);
 router.delete('/:userId',auth, deleteUser);
 router.route ("/getProfile").get(auth,getProfile);
 
-
+router.put('/update-profile/:id', updateFarmerProfile);
 
 
 
