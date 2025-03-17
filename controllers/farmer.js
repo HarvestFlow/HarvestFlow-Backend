@@ -6,7 +6,11 @@ import path from 'path';
 // Configuration de multer pour l'upload de fichiers
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    cb(null, 'uploads/certifications/'); // Dossier où seront stockés les fichiers
+    if (file.fieldname === 'certification') {
+      cb(null, 'uploads/certifications/');
+    } else if (file.fieldname === 'imageUser') {
+      cb(null, 'uploads/user-images/'); // New folder for user images
+    }
   },
   filename: (req, file, cb) => {
     const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
@@ -17,7 +21,6 @@ const storage = multer.diskStorage({
 const upload = multer({
   storage: storage,
   fileFilter: (req, file, cb) => {
-    // Accepter uniquement certains types de fichiers (ex: pdf, images)
     const filetypes = /pdf|jpeg|jpg|png/;
     const extname = filetypes.test(path.extname(file.originalname).toLowerCase());
     const mimetype = filetypes.test(file.mimetype);
@@ -25,35 +28,40 @@ const upload = multer({
     if (extname && mimetype) {
       return cb(null, true);
     }
-    cb(new Error('Seuls les fichiers PDF et images sont acceptés'));
+    cb(new Error('Seuls les fichiers PDF et images (JPEG, JPG, PNG) sont acceptés'));
   }
-}).single('certification'); // 'certification' est le nom du champ du fichier dans le form-data
+}).fields([
+  { name: 'certification', maxCount: 1 },
+  { name: 'imageUser', maxCount: 1 }
+]); // Handle multiple fields
 
 export const updateFarmerProfile = async (req, res) => {
-  // Middleware multer
   upload(req, res, async (err) => {
     if (err) {
+      console.error('Erreur Multer:', err.message); // Log erreur multer
       return res.status(400).json({
         success: false,
-        message: err.message
+        message: err.message,
       });
     }
 
     try {
+      console.log('Fichiers reçus par Multer:', req.files); // Log des fichiers
+      console.log('Corps de la requête:', req.body); // Log des données textuelles
+
       const { id } = req.params;
       const { productionType, productionMethod } = req.body;
 
-      // Créer l'objet de mise à jour
       const updateFields = {};
 
       // Validation de productionType
       if (productionType) {
-        const parsedProductionType = JSON.parse(productionType); // Car les arrays viennent en string via form-data
+        const parsedProductionType = JSON.parse(productionType);
         const validTypes = ["Bio", "Conventionnel", "Raisonné"];
         if (!Array.isArray(parsedProductionType) || !parsedProductionType.every(type => validTypes.includes(type))) {
           return res.status(400).json({
             success: false,
-            message: 'Type de production invalide. Doit être un tableau contenant uniquement: Bio, Conventionnel, ou Raisonné'
+            message: 'Type de production invalide. Doit être un tableau contenant uniquement: Bio, Conventionnel, ou Raisonné',
           });
         }
         updateFields.productionType = parsedProductionType;
@@ -66,18 +74,30 @@ export const updateFarmerProfile = async (req, res) => {
         if (!Array.isArray(parsedProductionMethod) || !parsedProductionMethod.every(method => validMethods.includes(method))) {
           return res.status(400).json({
             success: false,
-            message: 'Méthode de production invalide. Doit être un tableau contenant uniquement: Bio, Conventionnel, ou Raisonné'
+            message: 'Méthode de production invalide. Doit être un tableau contenant uniquement: Bio, Conventionnel, ou Raisonné',
           });
         }
         updateFields.productionMethod = parsedProductionMethod;
       }
 
-      // Gestion du fichier certification
-      if (req.file) {
-        updateFields.certification = req.file.path; // Stocker le chemin du fichier
+      // Gestion des fichiers
+      if (req.files) {
+        if (req.files['certification']) {
+          console.log('Certification détectée:', req.files['certification'][0].path);
+          updateFields.certification = req.files['certification'][0].path;
+        }
+        if (req.files['imageUser']) {
+          console.log('ImageUser détectée:', req.files['imageUser'][0].path);
+          updateFields.imageUser = req.files['imageUser'][0].path;
+        } else {
+          console.log('Aucune imageUser détectée dans req.files');
+        }
+      } else {
+        console.log('Aucun fichier reçu dans req.files');
       }
 
       // Mise à jour dans la base de données
+      console.log('Champs à mettre à jour:', updateFields);
       const updatedFarmer = await Company.findByIdAndUpdate(
         id,
         { $set: updateFields },
@@ -87,22 +107,21 @@ export const updateFarmerProfile = async (req, res) => {
       if (!updatedFarmer) {
         return res.status(404).json({
           success: false,
-          message: 'Agriculteur non trouvé'
+          message: 'Agriculteur non trouvé',
         });
       }
 
       res.status(200).json({
         success: true,
         message: 'Profil agriculteur mis à jour avec succès',
-        data: updatedFarmer
+        data: updatedFarmer,
       });
-
     } catch (error) {
       console.error('Erreur lors de la mise à jour du profil:', error);
       res.status(500).json({
         success: false,
         message: 'Erreur serveur lors de la mise à jour',
-        error: error.message
+        error: error.message,
       });
     }
   });

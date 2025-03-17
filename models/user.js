@@ -45,10 +45,11 @@ const userSchema = new mongoose.Schema({
     type: String,
     required: false, // Make imageUser optional
   },
-
-
-
-
+  
+  isActivated:{
+    type :Boolean,
+    required:false,
+  },
 
   createdAt: {
     type: Date,

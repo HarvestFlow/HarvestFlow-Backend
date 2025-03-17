@@ -50,7 +50,7 @@ export async function createUser(req, res) {
         email,
         password,
         companyname,
-        
+        isActivated,
         role,
 
         productionType,
@@ -99,7 +99,7 @@ export async function createUser(req, res) {
             securityQuestions,
             productionType,
             productionMethod ,
-
+            isActivated,
         });
       } else if (role === "distributor") {
         console.log("Creating company account...");
@@ -382,16 +382,23 @@ export async function deleteUser(req, res) {
     }
   
     try {
-      const profile = await User.findById(userId);
+      let profile = await User.findById(userId);
+      
       if (!profile) {
         return res.status(404).json({ error: "User not found" });
       }
-  
+      
+      // Check if isActivated exists, if not, set it to false and save
+      if (typeof profile.isActivated === 'undefined') {
+        profile.isActivated = false;
+        await profile.save();
+      }
+      
       return res.status(200).json(profile);
     } catch (error) {
       return res.status(500).json({ error: error.message });
     }
-  }
+}
   
   // Fonction pour supprimer un utilisateur par le superAdmin
 
@@ -469,3 +476,45 @@ export async function deleteUser(req, res) {
 ////////////////////////////////////////////////////////
      
 ////////////////////////////////////////////////////////
+export const updateUserActivation = async (req, res) => {
+  const { userId } = req.params; // ID de l'utilisateur à modifier (passé dans l'URL)
+  const loggedInUserId = req.auth.userId; // ID de l'utilisateur connecté
+  const { isActivated } = req.body;
+
+  try {
+    if (typeof isActivated !== 'boolean') {
+      return res.status(400).json({ message: 'isActivated doit être un booléen' });
+    }
+
+    // Vérifier si l'utilisateur connecté est autorisé (exemple : admin)
+    const loggedInUser = await User.findById(loggedInUserId);
+    if (!loggedInUser ) { // Suppose un champ isAdmin
+      return res.status(403).json({ message: 'Accès refusé : droits administratifs requis' });
+    }
+
+    const user = await User.findByIdAndUpdate(
+      userId,
+      { isActivated },
+      { new: true, runValidators: true }
+    ).select('_id email isActivated');
+
+    if (!user) {
+      return res.status(404).json({ message: 'Utilisateur non trouvé' });
+    }
+
+    res.status(200).json(user);
+  } catch (error) {
+    res.status(500).json({ message: 'Erreur lors de la mise à jour', error: error.message });
+  }
+};
+export const getAllUsers = async (req, res) => {
+  try {
+    const users = await User.find({}, '_id email isActivated certification').lean(); // Sélectionne uniquement les champs nécessaires
+    res.status(200).json(users);
+  } catch (error) {
+    res.status(500).json({
+      message: 'Erreur lors de la récupération des utilisateurs',
+      error: error.message,
+    });
+  }
+};

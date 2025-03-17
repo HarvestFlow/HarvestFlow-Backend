@@ -13,7 +13,8 @@ import {
   deleteUser,
   addAdmin,
   updateProfile,
- 
+  updateUserActivation,
+  getAllUsers,
 } from "../controllers/user.js";
 
 
@@ -45,13 +46,13 @@ const router = express.Router();
 router.route("/").post(createUser);
 router.route("/login").post(login);
 router.route("/logout").post(logout);
-router.route("/profile").put(auth,multer,updateProfile);
-
+router.put('/update/:userId', auth, updateUserActivation); // :userId dans l'URL
 
 
 ////////////////////////////////ADMIN ROUTES
 router.get('/getalladmin', auth,getAllAdmins);
 router.post("/addAdmin", auth, addAdmin);
+router.get("/getAllUsers", getAllUsers);
 
 
 ///////////////////////////////USER ROUTES
@@ -60,7 +61,7 @@ router.delete('/:userId',auth, deleteUser);
 router.route ("/getProfile").get(auth,getProfile);
 
 router.put('/update-profile/:id', updateFarmerProfile);
-
+router.put('/update-activation', auth,updateUserActivation); // Nouvelle route sans :userId
 
 
 ////////////////// RESET PASSWORD 
