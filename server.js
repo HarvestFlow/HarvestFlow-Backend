@@ -2,6 +2,8 @@ import express from 'express';
 import mongoose from 'mongoose';
 import userRoute from './routes/user.js';  // Ensure the '.js' extension is used for imports
 import parcelleRoute from './routes/parcelle.js';  // Ensure the '.js' extension is used for imports
+import stockRoute from './routes/stock.js';  // Ensure the '.js' extension is used for imports
+
 import path from 'path';
 import { fileURLToPath } from 'url';
 import cookieParser from 'cookie-parser';
@@ -44,6 +46,10 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 // Define routes
 app.use('/user', userRoute);
 app.use('/parcelle', parcelleRoute);
+
+
+app.use('/stock', stockRoute);
+
 
 // Handle 404
 app.use((req, res, next) => {

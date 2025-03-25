@@ -30,7 +30,20 @@ const ShapeSchema = new mongoose.Schema({
     },
     growthStage: {
       type: String,
-      required: false, // Stade global, mis à jour via observations
+      required: false, // Optional, updated via observations
+      enum: [
+        'Germination and Emergence',      // GS0
+        'Leaf Development',              // GS1
+        'Tillering',                     // GS2
+        'Stem Elongation',               // GS3
+        'Booting',                       // GS4
+        'Ear Emergence',                 // GS5
+        'Flowering',                     // GS6
+        'Milk Development',              // GS7
+        'Dough Development',             // GS8
+        'Ripening'                       // GS9
+      ],
+      default: null, // Starts as null until observed
     },
     estimatedYield: {
       type: Number,

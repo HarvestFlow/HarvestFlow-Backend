@@ -146,4 +146,31 @@ export async function getParcelleByUserId(req, res) {
       });
     }
   };
-
+  export const  getShapeCoordinates = async (req, res) => {
+    try {
+      const { shapeId } = req.params;
+  
+      // Rechercher une parcelle contenant le shape avec cet ID
+      const parcelle = await Parcelle.findOne({ 'shapes._id': shapeId });
+  
+      // Vérifier si la parcelle existe
+      if (!parcelle) {
+        return res.status(404).json({ message: 'Shape non trouvé' });
+      }
+  
+      // Trouver le shape spécifique dans le tableau shapes
+      const shape = parcelle.shapes.find(s => s._id.toString() === shapeId);
+  
+      // Vérifier si le shape existe
+      if (!shape) {
+        return res.status(404).json({ message: 'Shape non trouvé' });
+      }
+  
+      // Renvoyer les coordonnées du shape
+      const coordinates = shape.geometry.coordinates;
+      res.status(200).json({ coordinates });
+    } catch (error) {
+      console.error('Erreur lors de la récupération des coordonnées :', error);
+      res.status(500).json({ message: 'Erreur serveur' });
+    }
+  };

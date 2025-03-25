@@ -1,5 +1,5 @@
 import express from 'express';
-import { updateShape,createParcel, getParcelleByUserId ,deleteShape} from "../controllers/parcelle.js";
+import { updateShape,createParcel, getParcelleByUserId ,deleteShape  ,  getShapeCoordinates} from "../controllers/parcelle.js";
 import {
     getObservationsByShape,
     createObservation,
@@ -14,7 +14,7 @@ router.post('/parcelle', createParcel);
 router.get('/parcelle/:userId', getParcelleByUserId);
 router.delete("/parcelle/:userId/:shapeId", deleteShape);
 router.put('/parcelle/:userId/:shapeId', updateShape);
-
+router.get('/shape/:shapeId', getShapeCoordinates);
 router.get("/dailyObservation/:parcelleId/:shapeId", getObservationsByShape);
 router.post("/dailyObservation/:parcelleId/:shapeId", createObservation);
 router.put("/dailyObservation/:observationId", updateObservation);
