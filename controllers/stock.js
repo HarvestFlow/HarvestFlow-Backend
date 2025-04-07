@@ -89,7 +89,6 @@ export const getInputUsages = async (req, res) => {
     const usages = await InputUsage.find({ shapeId }).populate("inputId", "category type name unit");
 
     // Débogage : Vérifiez les données avant de les renvoyer
-    console.log("Usages trouvés :", JSON.stringify(usages, null, 2));
 
     // Vérifiez si la population a fonctionné
     const populatedUsages = usages.map((usage) => ({
