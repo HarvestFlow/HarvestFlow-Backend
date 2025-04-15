@@ -79,7 +79,7 @@ export const updateObservation = async (req, res) => {
       new: true,
     });
     if (!observation) return res.status(404).json({ message: "Observation non trouvée" });
-
+S
     res.status(200).json(observation);
   } catch (error) {
     res.status(500).json({ message: "Erreur lors de la mise à jour de l'observation", error });

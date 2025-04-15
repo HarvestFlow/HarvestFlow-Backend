@@ -38,7 +38,6 @@ const upload = multer({
 export const updateFarmerProfile = async (req, res) => {
   upload(req, res, async (err) => {
     if (err) {
-      console.error('Erreur Multer:', err.message); // Log erreur multer
       return res.status(400).json({
         success: false,
         message: err.message,
@@ -46,58 +45,65 @@ export const updateFarmerProfile = async (req, res) => {
     }
 
     try {
-      console.log('Fichiers reçus par Multer:', req.files); // Log des fichiers
-      console.log('Corps de la requête:', req.body); // Log des données textuelles
-
       const { id } = req.params;
-      const { productionType, productionMethod } = req.body;
+      const {
+        firstname,
+        lastname,
+        email,
+        phone,
+        companyname,
+        country,
+        address,
+        productionType,
+        productionMethod
+      } = req.body;
 
       const updateFields = {};
 
-      // Validation de productionType
+      // Champs texte simples
+      if (firstname) updateFields.firstname = firstname;
+      if (lastname) updateFields.lastname = lastname;
+      if (email) updateFields.email = email;
+      if (phone) updateFields.phone = phone;
+      if (companyname) updateFields.companyname = companyname;
+      if (country) updateFields.country = country;
+      if (address) updateFields.address = address;
+
+      // Validation des tableaux
       if (productionType) {
         const parsedProductionType = JSON.parse(productionType);
         const validTypes = ["Bio", "Conventionnel", "Raisonné"];
         if (!Array.isArray(parsedProductionType) || !parsedProductionType.every(type => validTypes.includes(type))) {
           return res.status(400).json({
             success: false,
-            message: 'Type de production invalide. Doit être un tableau contenant uniquement: Bio, Conventionnel, ou Raisonné',
+            message: 'Type de production invalide',
           });
         }
         updateFields.productionType = parsedProductionType;
       }
 
-      // Validation de productionMethod
       if (productionMethod) {
         const parsedProductionMethod = JSON.parse(productionMethod);
         const validMethods = ["Bio", "Conventionnel", "Raisonné"];
         if (!Array.isArray(parsedProductionMethod) || !parsedProductionMethod.every(method => validMethods.includes(method))) {
           return res.status(400).json({
             success: false,
-            message: 'Méthode de production invalide. Doit être un tableau contenant uniquement: Bio, Conventionnel, ou Raisonné',
+            message: 'Méthode de production invalide',
           });
         }
         updateFields.productionMethod = parsedProductionMethod;
       }
 
-      // Gestion des fichiers
+      // Fichiers
       if (req.files) {
         if (req.files['certification']) {
-          console.log('Certification détectée:', req.files['certification'][0].path);
           updateFields.certification = req.files['certification'][0].path;
         }
         if (req.files['imageUser']) {
-          console.log('ImageUser détectée:', req.files['imageUser'][0].path);
           updateFields.imageUser = req.files['imageUser'][0].path;
-        } else {
-          console.log('Aucune imageUser détectée dans req.files');
         }
-      } else {
-        console.log('Aucun fichier reçu dans req.files');
       }
 
-      // Mise à jour dans la base de données
-      console.log('Champs à mettre à jour:', updateFields);
       const updatedFarmer = await Company.findByIdAndUpdate(
         id,
         { $set: updateFields },
@@ -113,14 +119,13 @@ export const updateFarmerProfile = async (req, res) => {
 
       res.status(200).json({
         success: true,
-        message: 'Profil agriculteur mis à jour avec succès',
+        message: 'Profil mis à jour avec succès',
         data: updatedFarmer,
       });
     } catch (error) {
-      console.error('Erreur lors de la mise à jour du profil:', error);
       res.status(500).json({
         success: false,
-        message: 'Erreur serveur lors de la mise à jour',
+        message: 'Erreur serveur',
         error: error.message,
       });
     }

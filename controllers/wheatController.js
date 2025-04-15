@@ -1,5 +1,5 @@
 import { MongoClient, GridFSBucket } from 'mongodb';
-import { PythonShell } from 'python-shell'; // Ajouter cette ligne si absente
+import { PythonShell } from 'python-shell';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -9,7 +9,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 // Connexion à MongoDB
-const mongoUrl = 'mongodb://localhost:27017'; // Remplace par ton URL MongoDB
+const mongoUrl = 'mongodb://localhost:27017';
 const dbName = 'harvestflow';
 
 // Fonction pour uploader le fichier dans GridFS
@@ -20,22 +20,22 @@ async function uploadToGridFS() {
         const db = client.db(dbName);
         const gridFSBucket = new GridFSBucket(db, { bucketName: 'wheat_files' });
 
-        const filePath = 'C:/Users/DHIA/Desktop/PFE HARVEST8FLOW/HARVESTFLOW-BACKEND/wheat_data.csv';        const fileStream = fs.createReadStream(filePath);
+        const filePath = 'C:/Users/DHIA/Desktop/PFE HARVEST8FLOW/HARVESTFLOW-BACKEND/wheat_data.csv';
+        const fileStream = fs.createReadStream(filePath);
 
         const uploadStream = gridFSBucket.openUploadStream('wheat_data.csv');
         fileStream.pipe(uploadStream);
 
-        // Attendre que l'upload soit terminé
         const result = await new Promise((resolve, reject) => {
             uploadStream.on('finish', () => resolve('Upload terminé'));
             uploadStream.on('error', (err) => reject(err));
         });
 
-        return result; // Retourner le résultat après la fin de l'upload
+        return result;
     } catch (err) {
-        throw err; // Propager l'erreur pour la gérer dans la route
+        throw err;
     } finally {
-        await client.close(); // Fermer la connexion après que tout soit terminé
+        await client.close();
     }
 }
 
@@ -50,18 +50,20 @@ export const uploadWheatData = async (req, res) => {
     }
 };
 
-// predictWheatYield et getCountryStats restent inchangés
+// Route pour prédire le rendement du blé (sans rainfall)
 export const predictWheatYield = async (req, res) => {
-    const { rainfall, pesticides, temp, country } = req.body;
-    if (!rainfall || !pesticides || !temp || !country) {
-        return res.status(400).json({ error: 'Tous les champs sont requis.' });
+    const { pesticides, temp, country } = req.body;
+
+    // Validation des champs (sans rainfall)
+    if (!pesticides || !temp || !country) {
+        return res.status(400).json({ error: 'Tous les champs (pesticides, temp, country) sont requis.' });
     }
 
     let options = {
         mode: 'text',
         pythonOptions: ['-u'],
         scriptPath: './models',
-        args: [rainfall, pesticides, temp, country]
+        args: [pesticides, temp, country] // Suppression de rainfall
     };
 
     try {
@@ -74,6 +76,7 @@ export const predictWheatYield = async (req, res) => {
     }
 };
 
+// Route pour obtenir les statistiques par pays (inchangée)
 export const getCountryStats = async (req, res) => {
     const countryName = req.params.countryName;
 

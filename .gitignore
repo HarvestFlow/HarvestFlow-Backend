@@ -1,6 +1,27 @@
 # Add any directories, files, or patterns you don't want to be tracked by version control
 
+# Node.js
 /node_modules
 /bower_components
 package-lock.json
+npm-debug.log
+yarn-error.log
+.env
+
+# Uploads
 /uploads/**/*.*
+
+# Python
+venv/
+env/
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+*.egg-info/
+dist/
+build/
+
+# Autres
+*.log
+.DS_Store
