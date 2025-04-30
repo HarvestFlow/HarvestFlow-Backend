@@ -1,55 +1,99 @@
+
 import fs from 'fs';
 import { parse } from 'csv-parse';
 import XLSX from 'xlsx';
 import { Trade, UploadLog } from '../models/Trade.js';
 import { spawn } from 'child_process';
+import { franc } from 'franc';
 
-// Dictionary for column reference
+// Dictionary for column reference (expanded with Spanish synonyms)
 const columnSynonyms = {
   quantity: [
     'quantity', 'quantité', 'qté', 'volume', 'amount', 'qty',
-    'number', 'num', 'count', 'total_quantity', 'quantite', 'qte', 'amt'
+    'number', 'num', 'count', 'total_quantity', 'quantite', 'qte', 'amt',
+    'الكمية', 'كمية', 'عدد', 'مجموع_الكمية',
+    'cantidad', 'volumen', 'total_cantidad'
   ],
-  price: [
-    'price', 'prix', 'cost', 'coût', 'unit_price', 'unit price', 'price per unit', 'total_price',
-    'value', 'rate', 'unit_cost', 'total_cost', 'price_unit', 'cost_per_unit', 'valeur', 'montant'
+  unit_price: [
+    'unit_price', 'unit price', 'price per unit', 'unit_cost', 'cost_per_unit', 'price_unit', 'rate',
+    'سعر_الوحدة', 'تكلفة_الوحدة',
+    'precio_por_unidad', 'precio_unitario', 'costo_por_unidad'
+  ],
+  total_price: [
+    'total_price', 'total_cost', 'price', 'prix', 'cost', 'coût', 'value', 'valeur', 'montant',
+    'سعر', 'السعر', 'تكلفة', 'إجمالي_السعر',
+    'precio', 'costo', 'precio_total', 'costo_total'
   ],
   year: [
-    'year', 'année', 'yr',
-    'annee', 'y', 'season', 'harvest_year'
+    'year', 'année', 'yr', 'annee', 'y', 'season', 'harvest_year',
+    'سنة', 'السنة', 'عام',
+    'año', 'ano'
   ],
   surface: [
-    'surface', 'superficie', 'area', 'superficie récoltée (ha)',
-    'acreage', 'hectares', 'ha', 'land_area', 'surface_area', 'superfice'
+    'surface', 'superficie', 'superficie récoltée (ha)', 'acreage', 'hectares', 'ha', 'land_area', 'surface_area', 'superfice',
+    'مساحة', 'السطح', 'هكتار',
+    'superficie', 'hectáreas', 'area'
   ],
   yield: [
-    'yield', 'rendement', 'productivity', 'rendement (kg/ha)',
-    'output_per_ha', 'yield_per_ha', 'productivity_rate', 'rendement_kg_ha'
+    'yield', 'rendement', 'productivity', 'rendement (kg/ha)', 'output_per_ha', 'yield_per_ha', 'productivity_rate', 'rendement_kg_ha',
+    'إنتاجية', 'المحصول', 'الغلة',
+    'rendimiento', 'productividad'
   ],
   production: [
-    'production', 'output', 'production (t)',
-    'total_production', 'harvest', 'total_output', 'prod', 'tonnage', 'tons', 'tonnes'
+    'production', 'output', 'production (t)', 'total_production', 'harvest', 'total_output', 'prod', 'tonnage', 'tons', 'tonnes',
+    'إنتاج', 'الإنتاج', 'محصول',
+    'producción', 'cosecha', 'produccion'
   ],
   crop: [
-    'crop', 'culture', 'produce', 'commodity', 'item',
-    'product', 'grain', 'commodities', 'crops', 'cultivar', 'variety', 'cosecha', 'produit'
+    'crop', 'culture', 'produce', 'commodity', 'item', 'product', 'grain', 'commodities', 'crops', 'cultivar', 'variety', 'cosecha', 'produit',
+    'محصول', 'زراعة', 'منتج', 'اسم_المنتج',
+    'cultivo', 'producto', 'nombre_del_producto'
   ],
   date: [
-    'date', 'day', 'jour', 'harvestdate', 'harvest date',
-    'datetime', 'harvest_date', 'harvest_day', 'date_harvest', 'time'
+    'date', 'day', 'jour', 'harvestdate', 'harvest date', 'datetime', 'harvest_date', 'harvest_day', 'date_harvest', 'time',
+    'تاريخ', 'التاريخ', 'تاريخ_المعاملة',
+    'fecha', 'fecha_de_transacción', 'fecha_transaccion'
   ],
   location: [
-    'location', 'pays', 'country', 'lieu', 'region',
-    'place', 'site', 'zone', 'territory', 'region_name', 'geo', 'loc', 'pays_name'
+    'location', 'pays', 'country', 'lieu', 'region', 'area', 'place', 'site', 'zone', 'territory', 'region_name', 'geo', 'loc', 'pays_name',
+    'موقع', 'بلد', 'دولة', 'الدولة_المستوردة',
+    'país', 'pais', 'país_importador', 'pais_importador', 'ubicación', 'ubicacion'
   ],
   quality: [
-    'quality', 'qualité', 'grade',
-    'standard', 'level', 'rating', 'qualite', 'qual'
+    'quality', 'qualité', 'grade', 'standard', 'level', 'rating', 'qualite', 'qual',
+    'جودة', 'الجودة', 'درجة',
+    'calidad', 'nivel'
   ],
   buyer: [
-    'buyer', 'acheteur', 'purchaser',
-    'client', 'customer', 'consumer', 'purchaser_name', 'buyer_name', 'acheteur_name'
+    'buyer', 'acheteur', 'purchaser', 'client', 'customer', 'consumer', 'purchaser_name', 'buyer_name', 'acheteur_name',
+    'مشتري', 'المشتري', 'عميل', 'العميل',
+    'comprador', 'cliente'
   ],
+  transaction_id: [
+    'transaction_id', 'transaction_number', 'deal_id', 'order_id',
+    'رقم_المعاملة', 'معرف_المعاملة',
+    'número_de_transacción', 'numero_de_transaccion', 'id_transacción', 'id_transaccion'
+  ],
+  payment_method: [
+    'payment_method', 'payment_type', 'method_of_payment',
+    'طريقة_الدفع', 'طريقة_الدفع',
+    'método_de_pago', 'metodo_de_pago', 'forma_de_pago'
+  ],
+  notes: [
+    'notes', 'remarks', 'comments', 'observations',
+    'ملاحظات', 'تعليقات',
+    'notas', 'observaciones', 'comentarios'
+  ],
+  unit: [
+    'unit', 'unité', 'measure', 'measurement',
+    'وحدة', 'الوحدة',
+    'unidad', 'medida'
+  ],
+  currency: [
+    'currency', 'monnaie', 'money',
+    'عملة', 'العملة',
+    'moneda', 'divisa'
+  ]
 };
 
 // Flatten synonyms to get all reference terms for NLP
@@ -58,60 +102,108 @@ const referenceTerms = Object.entries(columnSynonyms).reduce((acc, [standard, sy
   return acc;
 }, {});
 
-console.log('Reference Terms:', referenceTerms); // Debug: Log reference terms
-
-// Standard column names (keys of columnSynonyms) for validation
+// Standard column names for validation
 const standardColumnsRef = Object.keys(columnSynonyms);
 
-// Normalize column names using Sentence-BERT via Python script (batch processing)
-const normalizeColumnNames = async (columnNames) => {
-  if (!columnNames || columnNames.length === 0) return columnNames;
-
-  const lowerCols = columnNames.map(col => col.toLowerCase().trim());
-
-  // Prepare input for Python script
-  const inputData = {
-    column_names: lowerCols,
-    reference_terms: referenceTerms,
-  };
-
-  // Call the Python script
-  const pythonProcess = spawn('python', ['./compute_similarity.py']);
-
+// Translate text (column names or messages) to target language
+const translateText = async (text, sourceLang, targetLang) => {
+  if (sourceLang === targetLang) return Array.isArray(text) ? text : [text];
+  const pythonProcess = spawn('python', ['./translate_columns.py']);
   return new Promise((resolve, reject) => {
-    // Send input data to Python script via stdin
-    pythonProcess.stdin.write(JSON.stringify(inputData));
+    pythonProcess.stdin.write(JSON.stringify({ text, source_lang: sourceLang, target_lang: targetLang }, null, 2), 'utf8');
     pythonProcess.stdin.end();
 
     let output = '';
     let errorOutput = '';
+    pythonProcess.stdout.on('data', (data) => (output += data.toString('utf8')));
+    pythonProcess.stderr.on('data', (data) => (errorOutput += data.toString('utf8')));
 
-    // Collect output from Python script
-    pythonProcess.stdout.on('data', (data) => {
-      output += data.toString();
-    });
-
-    // Collect errors from Python script
-    pythonProcess.stderr.on('data', (data) => {
-      errorOutput += data.toString();
-    });
-
-    // Handle process exit
     pythonProcess.on('close', (code) => {
       if (code !== 0) {
-        console.error(`Python script exited with code ${code}`);
-        console.error(`Error output: ${errorOutput}`);
+        console.error(`Translation script error: ${errorOutput}`);
+        return reject(new Error(`Translation script failed: ${errorOutput}`));
+      }
+      try {
+        const results = JSON.parse(output);
+        resolve(results.translated_text);
+      } catch (err) {
+        console.error(`Failed to parse translation output: ${output}`);
+        reject(err);
+      }
+    });
+  });
+};
+
+// Normalize column names using direct matching or Sentence-BERT
+const normalizeColumnNames = async (columnNames, detectedLang) => {
+  if (!columnNames || columnNames.length === 0) {
+    console.warn('No column names provided for normalization');
+    return columnNames || [];
+  }
+
+  // Validate and clean column names
+  const validColumns = columnNames
+    .map(col => String(col || '').trim())
+    .filter(col => col !== '');
+  if (validColumns.length === 0) {
+    console.warn('No valid column names after cleaning');
+    return columnNames;
+  }
+
+  // Debug: Log columns before normalization
+  console.log('Columns before normalization:', validColumns);
+
+  // Direct matching for non-English languages
+  const normalizedCols = validColumns.map(col => {
+    const lowerCol = col.toLowerCase();
+    return referenceTerms[lowerCol] || col;
+  });
+
+  // If any columns were normalized via direct matching, return them
+  if (normalizedCols.some((col, idx) => col !== validColumns[idx])) {
+    console.log('Normalized using reference terms:', normalizedCols);
+    return normalizedCols;
+  }
+
+  // Try translation and similarity-based normalization
+  let translatedColumns;
+  try {
+    translatedColumns = await translateText(validColumns, detectedLang, 'en');
+    console.log('Translated columns:', translatedColumns);
+  } catch (err) {
+    console.error(`Translation failed: ${err.message}`);
+    return normalizedCols; // Fallback to direct matching
+  }
+
+  const lowerCols = translatedColumns.map(col => String(col || '').toLowerCase().trim());
+  const inputData = { column_names: lowerCols, reference_terms: referenceTerms };
+
+  const pythonProcess = spawn('python', ['./compute_similarity.py']);
+  return new Promise((resolve, reject) => {
+    pythonProcess.stdin.write(JSON.stringify(inputData, null, 2), 'utf8');
+    pythonProcess.stdin.end();
+
+    let output = '';
+    let errorOutput = '';
+    pythonProcess.stdout.on('data', (data) => (output += data.toString('utf8')));
+    pythonProcess.stderr.on('data', (data) => (errorOutput += data.toString('utf8')));
+
+    pythonProcess.on('close', (code) => {
+      if (code !== 0) {
+        console.error(`Python script error: ${errorOutput}`);
         return reject(new Error(`Python script failed: ${errorOutput}`));
       }
-
       try {
         const results = JSON.parse(output);
         const normalizedCols = results.map(result => {
-          console.log(`Column "${result.column}" best match: "${result.best_match}" (score: ${result.score}) -> "${result.standard}"`);
-          // Use a threshold for semantic similarity (e.g., 0.7)
-          return result.score > 0.7 ? result.standard : result.column;
+          console.log(`Column "${result.column}" -> "${result.standard}" (score: ${result.score})`);
+          return result.score > 0.6 ? result.standard : result.column; // Lowered threshold
         });
-        resolve(normalizedCols);
+        // Ensure output length matches input
+        const finalCols = columnNames.map((col, idx) =>
+          validColumns.includes(col) ? normalizedCols[validColumns.indexOf(col)] : col
+        );
+        resolve(finalCols);
       } catch (err) {
         console.error(`Failed to parse Python output: ${output}`);
         reject(err);
@@ -128,7 +220,31 @@ const splitRowData = (row) => {
   if (Array.isArray(row) && row.length === 1 && typeof row[0] === 'string') {
     return row[0].split(',').map(item => item.trim());
   }
-  return Array.isArray(row) ? row.map(item => String(item).trim()) : [];
+  return Array.isArray(row) ? row.map(item => String(item || '').trim()) : [];
+};
+
+// Detect language of column names
+const detectColumnLanguage = (columnNames) => {
+  try {
+    const validText = columnNames
+      .map(col => String(col || '').trim())
+      .filter(col => col !== '')
+      .join(' ');
+    if (!validText) return 'en';
+    const langCode = franc(validText, { minLength: 3 });
+    const langMap = {
+      'ara': 'ar', // Arabic
+      'eng': 'en', // English
+      'fra': 'fr', // French
+      'spa': 'es', // Spanish
+      'deu': 'de', // German
+
+    };
+    return langMap[langCode] || 'en';
+  } catch (err) {
+    console.error('Language detection failed:', err.message);
+    return 'en';
+  }
 };
 
 // Upload and normalize trade data
@@ -137,11 +253,21 @@ export const uploadTradeData = async (req, res) => {
     const file = req.file;
     const { userId, dataType } = req.body;
 
-    if (!file) return res.status(400).json({ message: 'Aucun fichier uploadé' });
-    if (!userId) return res.status(400).json({ message: 'User ID requis' });
+    // Get user language from Accept-Language header
+    const userLang = req.headers['accept-language']?.split(',')[0] || 'en';
+
+    if (!file) {
+      const message = await translateText('No file uploaded', 'en', userLang);
+      return res.status(400).json({ message: message[0] });
+    }
+    if (!userId) {
+      const message = await translateText('User ID required', 'en', userLang);
+      return res.status(400).json({ message: message[0] });
+    }
     if (!dataType || !['production', 'stocks', 'offres'].includes(dataType)) {
       fs.unlinkSync(file.path);
-      return res.status(400).json({ message: 'Type de données invalide. Choisissez entre production, stocks ou offres.' });
+      const message = await translateText('Invalid data type. Choose between production, stocks, or offers.', 'en', userLang);
+      return res.status(400).json({ message: message[0] });
     }
 
     let results = [];
@@ -151,40 +277,32 @@ export const uploadTradeData = async (req, res) => {
       results = await new Promise((resolve, reject) => {
         const data = [];
         fs.createReadStream(file.path)
-          .pipe(parse({ columns: true, trim: true }))
+          .pipe(parse({ columns: true, trim: true, encoding: 'utf8' }))
           .on('data', (row) => data.push(row))
           .on('end', () => resolve(data))
           .on('error', reject);
       });
-      columns = results.length > 0 ? Object.keys(results[0]) : [];
+      columns = results.length > 0 ? Object.keys(results[0]).map(col => String(col || '').trim()) : [];
     } else if (file.mimetype === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet') {
-      const workbook = XLSX.readFile(file.path);
+      const workbook = XLSX.readFile(file.path, { codepage: 65001 });
       const sheetName = workbook.SheetNames[0];
       const sheet = workbook.Sheets[sheetName];
-
-      console.log('Raw sheet data:', XLSX.utils.sheet_to_json(sheet, { header: 1 }));
       const rawData = XLSX.utils.sheet_to_json(sheet, { header: 1 });
 
       if (rawData.length === 0) {
         fs.unlinkSync(file.path);
-        return res.status(400).json({ message: 'Fichier XLSX vide' });
+        const message = await translateText('XLSX file is empty', 'en', userLang);
+        return res.status(400).json({ message: message[0] });
       }
 
       const headers = rawData[0];
-      console.log('Extracted headers:', headers);
-
-      if (headers.length === 1 && typeof headers[0] === 'string' && headers[0].includes(',')) {
-        columns = headers[0].split(',').map(header => header.trim());
-      } else {
-        columns = headers.map(header => String(header).trim());
-      }
+      columns = headers.length === 1 && typeof headers[0] === 'string' && headers[0].includes(',')
+        ? headers[0].split(',').map(header => header.trim())
+        : headers.map(header => String(header || '').trim());
 
       const rawRows = rawData.slice(1);
-      console.log('Raw data rows:', rawRows);
-
       results = rawRows.map(row => {
         const rowValues = splitRowData(row);
-        console.log('Split row values:', rowValues);
         const rowData = {};
         columns.forEach((col, idx) => {
           rowData[col] = rowValues[idx] || '';
@@ -193,16 +311,28 @@ export const uploadTradeData = async (req, res) => {
       });
     } else {
       fs.unlinkSync(file.path);
-      return res.status(400).json({ message: 'Type de fichier non supporté. Utilisez CSV ou XLSX.' });
+      const message = await translateText('Unsupported file type. Use CSV or XLSX.', 'en', userLang);
+      return res.status(400).json({ message: message[0] });
     }
 
-    console.log('Final columns before normalization:', columns);
-    console.log('Processed results:', results);
+    // Validate columns
+    if (columns.length === 0 || columns.every(col => col === '')) {
+      fs.unlinkSync(file.path);
+      const message = await translateText('No valid columns found in file', 'en', userLang);
+      return res.status(400).json({ message: message[0] });
+    }
 
-    // Normalize all columns in one batch using Sentence-BERT
-    const normalizedColumns = await normalizeColumnNames(columns);
-    console.log('Normalized columns:', normalizedColumns);
+    // Debug: Log raw columns
+    console.log('Raw columns:', columns);
 
+    // Detect language of column names
+    const detectedLang = detectColumnLanguage(columns);
+
+    // Store original columns for traceability
+    const originalColumns = [...columns];
+
+    // Normalize column names
+    const normalizedColumns = await normalizeColumnNames(columns, detectedLang);
     const unrecognizedColumns = normalizedColumns.filter(col => !standardColumnsRef.includes(col));
     if (unrecognizedColumns.length > 0) {
       console.warn(`Unrecognized columns: ${unrecognizedColumns.join(', ')}`);
@@ -212,12 +342,10 @@ export const uploadTradeData = async (req, res) => {
     const normalizedData = results.map(entry => {
       const normalizedEntry = {};
       columns.forEach((col, idx) => {
-        const normCol = normalizedColumns[idx];
-        if (['price', 'quantity', 'year', 'surface', 'yield', 'production'].includes(normCol)) {
-          normalizedEntry[normCol] = Number(entry[col] || 0);
-        } else {
-          normalizedEntry[normCol] = String(entry[col] || '');
-        }
+        const normCol = normalizedColumns[idx] || col;
+        normalizedEntry[normCol] = ['price', 'quantity', 'year', 'surface', 'yield', 'production'].includes(normCol)
+          ? Number(entry[col] || 0)
+          : String(entry[col] || '');
       });
       return normalizedEntry;
     });
@@ -228,11 +356,17 @@ export const uploadTradeData = async (req, res) => {
       dataType,
       data: normalizedData,
       columns: finalColumns,
+      originalColumns,
       rowCount: normalizedData.length,
       uploadedAt: new Date(),
+      detectedLanguage: detectedLang
     });
 
     await trade.save();
+
+    const errorMessage = unrecognizedColumns.length > 0
+      ? await translateText(`Unrecognized columns: ${unrecognizedColumns.join(', ')}`, 'en', userLang)
+      : undefined;
 
     await UploadLog.create({
       userId,
@@ -240,16 +374,19 @@ export const uploadTradeData = async (req, res) => {
       filename: file.originalname,
       dataType,
       status: 'success',
-      errorMessage: unrecognizedColumns.length > 0
-        ? `Colonnes non normalisées : ${unrecognizedColumns.join(', ')}`
-        : undefined,
+      detectedLanguage: detectedLang,
+      errorMessage: errorMessage ? errorMessage[0] : undefined,
     });
 
     fs.unlinkSync(file.path);
-    res.json({ message: 'Fichier uploadé avec succès', trade });
+    const successMessage = await translateText('File uploaded successfully', 'en', userLang);
+    res.json({ message: successMessage[0], trade });
   } catch (error) {
-    console.error('Erreur lors de l\'upload:', error.message);
+    console.error('Upload error:', error.message);
     if (fs.existsSync(req.file?.path)) fs.unlinkSync(req.file.path);
+
+    const userLang = req.headers['accept-language']?.split(',')[0] || 'en';
+    const errorMessage = await translateText(`Server error during upload: ${error.message}`, 'en', userLang);
 
     await UploadLog.create({
       userId: req.body.userId || 'unknown',
@@ -257,10 +394,9 @@ export const uploadTradeData = async (req, res) => {
       dataType: req.body.dataType || 'unknown',
       status: 'failed',
       errorMessage: error.message,
-      fileId: undefined,
     });
 
-    res.status(500).json({ message: 'Erreur serveur lors de l\'upload' });
+    res.status(500).json({ message: errorMessage[0] });
   }
 };
 
@@ -268,14 +404,18 @@ export const uploadTradeData = async (req, res) => {
 export const getTradeFiles = async (req, res) => {
   try {
     const userId = req.params.userId;
-    const files = await Trade.find({ userId }).select('filename dataType rowCount columns uploadedAt _id');
+    const userLang = req.headers['accept-language']?.split(',')[0] || 'en';
+    const files = await Trade.find({ userId }).select('filename dataType rowCount columns originalColumns uploadedAt _id');
     if (!files || files.length === 0) {
-      return res.status(404).json({ message: 'Aucun fichier trouvé pour cet utilisateur.' });
+      const message = await translateText('No files found for this user', 'en', userLang);
+      return res.status(404).json({ message: message[0] });
     }
     res.json({ files });
   } catch (error) {
-    console.error('Erreur lors de la récupération des fichiers:', error.message);
-    res.status(500).json({ message: 'Erreur serveur lors de la récupération des fichiers' });
+    console.error('Error retrieving files:', error.message);
+    const userLang = req.headers['accept-language']?.split(',')[0] || 'en';
+    const message = await translateText('Server error retrieving files', 'en', userLang);
+    res.status(500).json({ message: message[0] });
   }
 };
 
@@ -283,14 +423,18 @@ export const getTradeFiles = async (req, res) => {
 export const getTradeData = async (req, res) => {
   try {
     const { userId, fileId } = req.params;
+    const userLang = req.headers['accept-language']?.split(',')[0] || 'en';
     const trade = await Trade.findOne({ userId, _id: fileId });
     if (!trade) {
-      return res.status(404).json({ message: 'Fichier non trouvé' });
+      const message = await translateText('File not found', 'en', userLang);
+      return res.status(404).json({ message: message[0] });
     }
-    res.json({ data: trade.data, columns: trade.columns });
+    res.json({ data: trade.data, columns: trade.columns, originalColumns: trade.originalColumns });
   } catch (error) {
-    console.error('Erreur lors de la récupération des données:', error.message);
-    res.status(500).json({ message: 'Erreur serveur lors de la récupération des données' });
+    console.error('Error retrieving data:', error.message);
+    const userLang = req.headers['accept-language']?.split(',')[0] || 'en';
+    const message = await translateText('Server error retrieving data', 'en', userLang);
+    res.status(500).json({ message: message[0] });
   }
 };
 
@@ -299,30 +443,37 @@ export const updateTradeData = async (req, res) => {
   try {
     const { userId, fileId } = req.params;
     const { rowIndex, updatedData } = req.body;
+    const userLang = req.headers['accept-language']?.split(',')[0] || 'en';
 
     const trade = await Trade.findOne({ userId, _id: fileId });
     if (!trade) {
-      return res.status(404).json({ message: 'Fichier non trouvé' });
+      const message = await translateText('File not found', 'en', userLang);
+      return res.status(400).json({ message: message[0] });
     }
 
     if (rowIndex < 0 || rowIndex >= trade.data.length) {
-      return res.status(400).json({ message: 'Index de ligne invalide' });
+      const message = await translateText('Invalid row index', 'en', userLang);
+      return res.status(400).json({ message: message[0] });
     }
 
-    const validKeys = trade.columns;
+    const validKeys = trade.columns || [];
     for (const key of Object.keys(updatedData)) {
       if (!validKeys.includes(key)) {
-        return res.status(400).json({ message: `Clé invalide : ${key}` });
+        const message = await translateText(`Invalid key: ${key}`, 'en', userLang);
+        return res.status(400).json({ message: message[0] });
       }
     }
 
     trade.data[rowIndex] = { ...trade.data[rowIndex], ...updatedData };
     await trade.save();
 
-    res.json({ message: 'Donnée mise à jour', data: trade.data });
+    const message = await translateText('Data updated successfully', 'en', userLang);
+    res.json({ message: message[0], data: trade.data });
   } catch (error) {
-    console.error('Erreur lors de la mise à jour:', error.message);
-    res.status(500).json({ message: 'Erreur serveur lors de la mise à jour' });
+    console.error('Error updating data:', error.message);
+    const userLang = req.headers['accept-language']?.split(',')[0] || 'en';
+    const message = await translateText('Server error during update', 'en', userLang);
+    res.status(500).json({ message: message[0] });
   }
 };
 
@@ -330,15 +481,168 @@ export const updateTradeData = async (req, res) => {
 export const deleteTradeFile = async (req, res) => {
   try {
     const { userId, fileId } = req.params;
+    const userLang = req.headers['accept-language']?.split(',')[0] || 'en';
     const trade = await Trade.findOneAndDelete({ userId, _id: fileId });
     if (!trade) {
-      return res.status(404).json({ message: 'Fichier non trouvé' });
+      const message = await translateText('File not found', 'en', userLang);
+      return res.status(404).json({ message: message[0] });
     }
 
     await UploadLog.deleteMany({ fileId });
-    res.json({ message: 'Fichier supprimé avec succès' });
+    const message = await translateText('File deleted successfully', 'en', userLang);
+    res.json({ message: message[0] });
   } catch (error) {
-    console.error('Erreur lors de la suppression:', error.message);
-    res.status(500).json({ message: 'Erreur serveur lors de la suppression' });
+    console.error('Error deleting file:', error.message);
+    const userLang = req.headers['accept-language']?.split(',')[0] || 'en';
+    const message = await translateText('Server error during deletion', 'en', userLang);
+    res.status(500).json({ message: message[0] });
+  }
+};
+
+// Add a new column
+export const addTradeColumn = async (req, res) => {
+  try {
+    const { userId, fileId } = req.params;
+    const { columnName } = req.body;
+    const userLang = req.headers['accept-language']?.split(',')[0] || 'en';
+
+    if (!columnName) {
+      const message = await translateText('Column name required', 'en', userLang);
+      return res.status(400).json({ message: message[0] });
+    }
+
+    const trade = await Trade.findOne({ userId, _id: fileId });
+    if (!trade) {
+      const message = await translateText('File not found', 'en', userLang);
+      return res.status(404).json({ message: message[0] });
+    }
+
+    if (!trade.columns) trade.columns = [];
+    if (!trade.originalColumns) trade.originalColumns = [];
+
+    if (trade.columns.includes(columnName)) {
+      const message = await translateText('Column already exists', 'en', userLang);
+      return res.status(400).json({ message: message[0] });
+    }
+
+    trade.columns.push(columnName);
+    trade.originalColumns.push(columnName);
+    trade.data = trade.data.map(row => ({ ...row, [columnName]: '' }));
+    await trade.save();
+
+    const message = await translateText('Column added successfully', 'en', userLang);
+    res.json({ message: message[0], columns: trade.columns, data: trade.data });
+  } catch (error) {
+    console.error('Error adding column:', error.message);
+    const userLang = req.headers['accept-language']?.split(',')[0] || 'en';
+    const message = await translateText('Server error', 'en', userLang);
+    res.status(500).json({ message: message[0] });
+  }
+};
+
+// Delete a column
+export const deleteTradeColumn = async (req, res) => {
+  try {
+    const { userId, fileId } = req.params;
+    const { columnName } = req.body;
+    const userLang = req.headers['accept-language']?.split(',')[0] || 'en';
+
+    if (!columnName) {
+      const message = await translateText('Column name required', 'en', userLang);
+      return res.status(400).json({ message: message[0] });
+    }
+
+    const trade = await Trade.findOne({ userId, _id: fileId });
+    if (!trade) {
+      const message = await translateText('File not found', 'en', userLang);
+      return res.status(404).json({ message: message[0] });
+    }
+
+    if (!trade.columns) trade.columns = [];
+    if (!trade.originalColumns) trade.originalColumns = [];
+
+    if (!trade.columns.includes(columnName)) {
+      const message = await translateText('Column not found', 'en', userLang);
+      return res.status(400).json({ message: message[0] });
+    }
+
+    trade.columns = trade.columns.filter(col => col !== columnName);
+    trade.originalColumns = trade.originalColumns.filter(col => col !== columnName);
+    trade.data = trade.data.map(row => {
+      const { [columnName]: _, ...rest } = row;
+      return rest;
+    });
+    await trade.save();
+
+    const message = await translateText('Column deleted successfully', 'en', userLang);
+    res.json({ message: message[0], columns: trade.columns, data: trade.data });
+  } catch (error) {
+    console.error('Error deleting column:', error.message);
+    const userLang = req.headers['accept-language']?.split(',')[0] || 'en';
+    const message = await translateText('Server error', 'en', userLang);
+    res.status(500).json({ message: message[0] });
+  }
+};
+
+// Add a new row
+export const addTradeRow = async (req, res) => {
+  try {
+    const { userId, fileId } = req.params;
+    const userLang = req.headers['accept-language']?.split(',')[0] || 'en';
+
+    const trade = await Trade.findOne({ userId, _id: fileId });
+    if (!trade) {
+      const message = await translateText('File not found', 'en', userLang);
+      return res.status(404).json({ message: message[0] });
+    }
+
+    const newRow = (trade.columns || []).reduce((acc, col) => {
+      acc[col] = ['price', 'quantity', 'year', 'surface', 'yield', 'production'].includes(col) ? 0 : '';
+      return acc;
+    }, {});
+
+    trade.data.push(newRow);
+    trade.rowCount = trade.data.length;
+    await trade.save();
+
+    const message = await translateText('Row added successfully', 'en', userLang);
+    res.json({ message: message[0], data: trade.data });
+  } catch (error) {
+    console.error('Error adding row:', error.message);
+    const userLang = req.headers['accept-language']?.split(',')[0] || 'en';
+    const message = await translateText('Server error', 'en', userLang);
+    res.status(500).json({ message: message[0] });
+  }
+};
+
+// Delete a row
+export const deleteTradeRow = async (req, res) => {
+  try {
+    const { userId, fileId } = req.params;
+    const { rowIndex } = req.body;
+    const userLang = req.headers['accept-language']?.split(',')[0] || 'en';
+
+    const trade = await Trade.findOne({ userId, _id: fileId });
+    if (!trade) {
+      const message = await translateText('File not found', 'en', userLang);
+      return res.status(404).json({ message: message[0] });
+    }
+
+    if (rowIndex < 0 || rowIndex >= trade.data.length) {
+      const message = await translateText('Invalid row index', 'en', userLang);
+      return res.status(400).json({ message: message[0] });
+    }
+
+    trade.data.splice(rowIndex, 1);
+    trade.rowCount = trade.data.length;
+    await trade.save();
+
+    const message = await translateText('Row deleted successfully', 'en', userLang);
+    res.json({ message: message[0], data: trade.data });
+  } catch (error) {
+    console.error('Error deleting row:', error.message);
+    const userLang = req.headers['accept-language']?.split(',')[0] || 'en';
+    const message = await translateText('Server error', 'en', userLang);
+    res.status(500).json({ message: message[0] });
   }
 };

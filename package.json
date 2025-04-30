@@ -23,6 +23,7 @@
     "express": "^4.21.2",
     "express-validator": "^7.2.1",
     "fasttext": "^1.0.0",
+    "franc": "^6.2.0",
     "fuzzball": "^2.2.2",
     "iconv-lite": "^0.6.3",
     "jsonwebtoken": "^9.0.2",

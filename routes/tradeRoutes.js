@@ -1,8 +1,18 @@
 import express from 'express';
 import multer from 'multer';
-import { uploadTradeData, getTradeFiles, getTradeData, updateTradeData, deleteTradeFile } from '../controllers/tradeController.js';
 import path from 'path';
 import fs from 'fs';
+import {
+  uploadTradeData,
+  getTradeFiles,
+  getTradeData,
+  updateTradeData,
+  deleteTradeFile,
+  addTradeColumn,
+  deleteTradeColumn,
+  addTradeRow,
+  deleteTradeRow,
+} from '../controllers/tradeController.js';
 
 const router = express.Router();
 
@@ -32,10 +42,14 @@ const upload = multer({
 });
 
 // Routes
-router.post('/upload', upload.single('tradeData'), uploadTradeData);
-router.get('/files/:userId', getTradeFiles); // Nouvelle route pour lister les fichiers
-router.get('/:userId/:fileId', getTradeData); // Récupérer les données d’un fichier spécifique
-router.put('/:userId/:fileId', updateTradeData); // Mettre à jour une entrée dans un fichier spécifique
-router.delete('/:userId/:fileId', deleteTradeFile); // Supprimer un fichier spécifique
+router.post('/upload', upload.single('tradeData'), uploadTradeData); // Upload a new file
+router.get('/files/:userId', getTradeFiles); // List all files for a user
+router.get('/:userId/:fileId', getTradeData); // Get data for a specific file
+router.put('/:userId/:fileId', updateTradeData); // Update a specific row in a file
+router.delete('/:userId/:fileId', deleteTradeFile); // Delete a specific file
+router.post('/:userId/:fileId/column', addTradeColumn); // Add a new column
+router.delete('/:userId/:fileId/column', deleteTradeColumn); // Delete a column
+router.post('/:userId/:fileId/row', addTradeRow); // Add a new row
+router.delete('/:userId/:fileId/row', deleteTradeRow); // Delete a row
 
 export default router;

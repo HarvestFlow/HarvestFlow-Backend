@@ -7,7 +7,9 @@ import wheatRoute from './routes/wheatRoutes.js';
 import tradeRoutes from './routes/tradeRoutes.js';
 import notificationRoutes from './routes/notificationRoutes.js'; // Notification routes
 
-import dailyreommendationRoutes from './routes/dailyrecommendation.js'
+import dailyreommendationRoutes from './routes/dailyrecommendation.js';
+import FarmerForm from './routes/farmerForm.js';
+
 import http from 'http';
 import { Server } from 'socket.io'; // Use Socket.IO instead of ws
 import path from 'path';
@@ -66,6 +68,7 @@ app.use('/stock', stockRoute);
 app.use('/api/trade', tradeRoutes);
 app.use('/api/notifications', notificationRoutes(io)); // Pass io to notification routes
 app.use('/model', dailyreommendationRoutes);
+app.use('/farmerform', FarmerForm);
 
 
 

@@ -32,16 +32,16 @@ const ShapeSchema = new mongoose.Schema({
       type: String,
       required: false, // Optional, updated via observations
       enum: [
-        'Germination and Emergence',      // GS0
-        'Leaf Development',              // GS1
-        'Tillering',                     // GS2
-        'Stem Elongation',               // GS3
-        'Booting',                       // GS4
-        'Ear Emergence',                 // GS5
-        'Flowering',                     // GS6
-        'Milk Development',              // GS7
-        'Dough Development',             // GS8
-        'Ripening'                       // GS9
+        "Germination and Emergence", // GS0
+        "Leaf Development", // GS1
+        "Tillering", // GS2
+        "Stem Elongation", // GS3
+        "Booting", // GS4
+        "Ear Emergence", // GS5
+        "Flowering", // GS6
+        "Milk Development", // GS7
+        "Dough Development", // GS8
+        "Ripening", // GS9
       ],
       default: null, // Starts as null until observed
     },
@@ -65,11 +65,22 @@ const ShapeSchema = new mongoose.Schema({
       required: true,
     },
   },
-  // Nouveau : Référence aux observations quotidiennes spécifiques à ce shape
-  dailyObservations: [{
-    type: mongoose.Schema.Types.ObjectId,
-    ref: "DailyObservation",
-  }],
+  // Référence aux observations quotidiennes spécifiques à ce shape
+  dailyObservations: [
+    {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "DailyObservation",
+    },
+  ],
+  // Champs pour la température moyenne et le pays
+  averageTemperature: {
+    type: Number,
+    required: false, // Température moyenne quotidienne en °C
+  },
+  country: {
+    type: String,
+    required: false, // Pays correspondant aux coordonnées
+  },
 });
 
 const ParcelleSchema = new mongoose.Schema({
