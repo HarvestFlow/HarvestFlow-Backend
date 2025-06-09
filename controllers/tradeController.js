@@ -1,4 +1,3 @@
-
 import fs from 'fs';
 import { parse } from 'csv-parse';
 import XLSX from 'xlsx';
@@ -6,7 +5,7 @@ import { Trade, UploadLog } from '../models/Trade.js';
 import { spawn } from 'child_process';
 import { franc } from 'franc';
 
-// Dictionary for column reference (expanded with Spanish synonyms)
+// Expanded dictionary for column reference (financial terms included)
 const columnSynonyms = {
   quantity: [
     'quantity', 'quantité', 'qté', 'volume', 'amount', 'qty',
@@ -20,9 +19,20 @@ const columnSynonyms = {
     'precio_por_unidad', 'precio_unitario', 'costo_por_unidad'
   ],
   total_price: [
-    'total_price', 'total_cost', 'price', 'prix', 'cost', 'coût', 'value', 'valeur', 'montant',
+    'total_price', 'total_cost', 'price', 'prix', 'cost', 'coût', 'value', 'valeur',
+    'montant_total', 'total_amount', 'montantTTC', 'montant_ttc', 'ttc', 'total_incl_tax',
     'سعر', 'السعر', 'تكلفة', 'إجمالي_السعر',
-    'precio', 'costo', 'precio_total', 'costo_total'
+    'precio', 'costo', 'precio_total', 'costo_total', 'importe_con_impuestos', 'monto_total'
+  ],
+  net_amount: [
+    'net_amount', 'montantHT', 'montant_ht', 'amount_excl_tax', 'ht', 'base_amount',
+    'montant_hors_taxes', 'montant_hors_taxe',
+    'importe_sin_impuestos', 'monto_sin_impuestos'
+  ],
+  vat_amount: [
+    'vat_amount', 'montantTVA', 'montant_tva', 'tax_amount', 'tva', 'vat',
+    'montant_de_la_tva', 'taxe_sur_la_valeur_ajoutée',
+    'importe_iva', 'monto_iva'
   ],
   year: [
     'year', 'année', 'yr', 'annee', 'y', 'season', 'harvest_year',
@@ -30,17 +40,17 @@ const columnSynonyms = {
     'año', 'ano'
   ],
   surface: [
-    'surface', 'superficie', 'superficie récoltée (ha)', 'acreage', 'hectares', 'ha', 'land_area', 'surface_area', 'superfice',
+    'surface', 'superficie', 'superficie_récoltée_(ha)', 'acreage', 'hectares', 'ha', 'land_area', 'surface_area', 'superfice',
     'مساحة', 'السطح', 'هكتار',
     'superficie', 'hectáreas', 'area'
   ],
   yield: [
-    'yield', 'rendement', 'productivity', 'rendement (kg/ha)', 'output_per_ha', 'yield_per_ha', 'productivity_rate', 'rendement_kg_ha',
+    'yield', 'rendement', 'productivity', 'rendement_(kg/ha)', 'output_per_ha', 'yield_per_ha', 'productivity_rate', 'rendement_kg_ha',
     'إنتاجية', 'المحصول', 'الغلة',
     'rendimiento', 'productividad'
   ],
   production: [
-    'production', 'output', 'production (t)', 'total_production', 'harvest', 'total_output', 'prod', 'tonnage', 'tons', 'tonnes',
+    'production', 'output', 'production_(t)', 'total_production', 'harvest', 'total_output', 'prod', 'tonnage', 'tons', 'tonnes',
     'إنتاج', 'الإنتاج', 'محصول',
     'producción', 'cosecha', 'produccion'
   ],
@@ -50,7 +60,7 @@ const columnSynonyms = {
     'cultivo', 'producto', 'nombre_del_producto'
   ],
   date: [
-    'date', 'day', 'jour', 'harvestdate', 'harvest date', 'datetime', 'harvest_date', 'harvest_day', 'date_harvest', 'time',
+    'date', 'day', 'jour', 'harvestdate', 'harvest_date', 'datetime', 'harvest_day', 'date_harvest', 'time', 'dateFacture', 'date_facture',
     'تاريخ', 'التاريخ', 'تاريخ_المعاملة',
     'fecha', 'fecha_de_transacción', 'fecha_transaccion'
   ],
@@ -70,7 +80,7 @@ const columnSynonyms = {
     'comprador', 'cliente'
   ],
   transaction_id: [
-    'transaction_id', 'transaction_number', 'deal_id', 'order_id',
+    'transaction_id', 'transaction_number', 'deal_id', 'order_id', 'numeroFacture', 'numerofacture',
     'رقم_المعاملة', 'معرف_المعاملة',
     'número_de_transacción', 'numero_de_transaccion', 'id_transacción', 'id_transaccion'
   ],
@@ -93,14 +103,26 @@ const columnSynonyms = {
     'currency', 'monnaie', 'money',
     'عملة', 'العملة',
     'moneda', 'divisa'
+  ],
+  supplier: [
+    'supplier', 'fournisseur', 'vendor', 'provider', 'seller',
+    'مزود', 'مورد',
+    'proveedor', 'vendedor'
   ]
 };
 
-// Flatten synonyms to get all reference terms for NLP
-const referenceTerms = Object.entries(columnSynonyms).reduce((acc, [standard, synonyms]) => {
-  synonyms.forEach(syn => acc[syn.toLowerCase()] = standard);
-  return acc;
-}, {});
+// Flatten synonyms to reference terms for NLP (ensure unique mappings)
+const referenceTerms = {};
+for (const [standard, synonyms] of Object.entries(columnSynonyms)) {
+  synonyms.forEach(syn => {
+    const lowerSyn = syn.toLowerCase();
+    if (referenceTerms[lowerSyn] && referenceTerms[lowerSyn] !== standard) {
+      console.warn(`Duplicate synonym "${lowerSyn}" mapped to "${referenceTerms[lowerSyn]}" and "${standard}". Keeping "${referenceTerms[lowerSyn]}".`);
+    } else {
+      referenceTerms[lowerSyn] = standard;
+    }
+  });
+}
 
 // Standard column names for validation
 const standardColumnsRef = Object.keys(columnSynonyms);
@@ -134,8 +156,49 @@ const translateText = async (text, sourceLang, targetLang) => {
   });
 };
 
+// Validate columns based on data type (relaxed to allow unrecognized columns)
+const validateColumnsForDataType = (normalizedColumns, dataType) => {
+  const expectedColumns = {
+    offres: ['quantity', 'unit_price', 'total_price', 'net_amount', 'vat_amount', 'crop', 'buyer', 'transaction_id'],
+    production: ['crop', 'quantity', 'surface', 'yield', 'production'],
+    stocks: ['crop', 'quantity', 'location']
+  };
+  const required = expectedColumns[dataType] || [];
+  const missing = required.filter(col => !normalizedColumns.includes(col));
+  // Allow unrecognized columns and only flag incompatible columns (e.g., agricultural in offres)
+  const unexpected = normalizedColumns.filter(col => {
+    if (dataType === 'production') {
+      return ['net_amount', 'vat_amount', 'total_price'].includes(col);
+    }
+    if (dataType === 'offres') {
+      return ['yield', 'surface', 'production'].includes(col);
+    }
+    if (dataType === 'stocks') {
+      return ['net_amount', 'vat_amount', 'total_price', 'yield', 'surface', 'production'].includes(col);
+    }
+    return false; // Allow unrecognized columns
+  });
+  return { missing, unexpected };
+};
+
+// Suggest data type based on columns
+const suggestDataType = (columns) => {
+  const financialColumns = ['net_amount', 'vat_amount', 'total_price', 'montantHT', 'montantTVA', 'montantTTC', 'unit_price', 'transaction_id', 'buyer'];
+  const productionColumns = ['surface', 'yield', 'production'];
+  const stockColumns = ['location'];
+  
+  const hasFinancial = columns.some(col => financialColumns.includes(col.toLowerCase()));
+  const hasProduction = columns.some(col => productionColumns.includes(col.toLowerCase()));
+  const hasStock = columns.some(col => stockColumns.includes(col.toLowerCase()));
+
+  if (hasFinancial && !hasProduction && !hasStock) return 'offres';
+  if (hasProduction) return 'production';
+  if (hasStock) return 'stocks';
+  return 'offres'; // Default to offres for mixed or ambiguous cases
+};
+
 // Normalize column names using direct matching or Sentence-BERT
-const normalizeColumnNames = async (columnNames, detectedLang) => {
+const normalizeColumnNames = async (columnNames, detectedLang, dataType, sampleData) => {
   if (!columnNames || columnNames.length === 0) {
     console.warn('No column names provided for normalization');
     return columnNames || [];
@@ -151,34 +214,80 @@ const normalizeColumnNames = async (columnNames, detectedLang) => {
   }
 
   // Debug: Log columns before normalization
-  console.log('Columns before normalization:', validColumns);
+  console.log('Columns before normalization:', validColumns, 'Data type:', dataType);
 
-  // Direct matching for non-English languages
-  const normalizedCols = validColumns.map(col => {
+  // Enhanced direct matching with exact and partial matching
+  const normalizedCols = validColumns.map((col, idx) => {
     const lowerCol = col.toLowerCase();
-    return referenceTerms[lowerCol] || col;
+    if (referenceTerms[lowerCol]) {
+      console.log(`Direct match: "${col}" -> "${referenceTerms[lowerCol]}"`);
+      return referenceTerms[lowerCol];
+    }
+    // Partial matching
+    for (const [synonym, standard] of Object.entries(referenceTerms)) {
+      if (lowerCol.includes(synonym)) {
+        console.log(`Partial match: "${col}" -> "${standard}"`);
+        return standard;
+      }
+    }
+    // Heuristic for financial columns in 'offres' only for columns with partial synonym match
+    if (dataType === 'offres' && sampleData[idx]) {
+      const sample = String(sampleData[idx]).trim();
+      if (/^\d+(\.\d{1,2})?$/.test(sample)) {
+        const financialSynonyms = [
+          ...columnSynonyms.net_amount,
+          ...columnSynonyms.vat_amount,
+          ...columnSynonyms.total_price
+        ].map(s => s.toLowerCase());
+        if (financialSynonyms.some(syn => lowerCol.includes(syn))) {
+          if (lowerCol.includes('ht') || lowerCol.includes('hors_taxe')) {
+            console.log(`Heuristic match: "${col}" -> "net_amount" (financial data)`);
+            return 'net_amount';
+          }
+          if (lowerCol.includes('tva') || lowerCol.includes('tax')) {
+            console.log(`Heuristic match: "${col}" -> "vat_amount" (financial data)`);
+            return 'vat_amount';
+          }
+          if (lowerCol.includes('ttc') || lowerCol.includes('total')) {
+            console.log(`Heuristic match: "${col}" -> "total_price" (financial data)`);
+            return 'total_price';
+          }
+        }
+      }
+    }
+    // Keep unmatched columns as-is
+    console.log(`No match for "${col}", retaining as-is`);
+    return col;
   });
 
-  // If any columns were normalized via direct matching, return them
-  if (normalizedCols.some((col, idx) => col !== validColumns[idx])) {
-    console.log('Normalized using reference terms:', normalizedCols);
+  // Skip Sentence-BERT if all columns are matched or intentionally retained as-is
+  const unmatchedColumns = normalizedCols.filter((col, idx) => col === validColumns[idx] && !referenceTerms[col.toLowerCase()]);
+  if (unmatchedColumns.length === 0) {
+    console.log('All columns matched or retained as-is, skipping Sentence-BERT:', normalizedCols);
     return normalizedCols;
   }
 
-  // Try translation and similarity-based normalization
+  // Try translation and similarity-based normalization for unmatched columns
   let translatedColumns;
   try {
-    translatedColumns = await translateText(validColumns, detectedLang, 'en');
-    console.log('Translated columns:', translatedColumns);
+    translatedColumns = await translateText(unmatchedColumns, detectedLang, 'en');
+    console.log('Translated unmatched columns:', translatedColumns);
   } catch (err) {
     console.error(`Translation failed: ${err.message}`);
-    return normalizedCols; // Fallback to direct matching
+    return normalizedCols; // Return current normalized columns if translation fails
   }
 
   const lowerCols = translatedColumns.map(col => String(col || '').toLowerCase().trim());
-  const inputData = { column_names: lowerCols, reference_terms: referenceTerms };
+  const inputData = { column_names: lowerCols, reference_terms: referenceTerms, data_type: dataType };
 
   const pythonProcess = spawn('python', ['./compute_similarity.py']);
+  // Set timeout for Python process (10 seconds)
+  const timeout = setTimeout(() => {
+    pythonProcess.kill();
+    console.error('Python script timed out after 10 seconds');
+    console.log(`Python script error: Input columns: ${JSON.stringify(inputData.column_names)}, Data type: ${dataType}`);
+  }, 10000);
+
   return new Promise((resolve, reject) => {
     pythonProcess.stdin.write(JSON.stringify(inputData, null, 2), 'utf8');
     pythonProcess.stdin.end();
@@ -189,24 +298,34 @@ const normalizeColumnNames = async (columnNames, detectedLang) => {
     pythonProcess.stderr.on('data', (data) => (errorOutput += data.toString('utf8')));
 
     pythonProcess.on('close', (code) => {
+      clearTimeout(timeout); // Clear timeout on completion
       if (code !== 0) {
-        console.error(`Python script error: ${errorOutput}`);
-        return reject(new Error(`Python script failed: ${errorOutput}`));
+        console.error(`Python script error: ${errorOutput || 'No error output, likely timed out'}`);
+        return resolve(normalizedCols); // Return current normalized columns if Python fails
       }
       try {
         const results = JSON.parse(output);
-        const normalizedCols = results.map(result => {
+        const bertNormalizedCols = results.map(result => {
           console.log(`Column "${result.column}" -> "${result.standard}" (score: ${result.score})`);
-          return result.score > 0.6 ? result.standard : result.column; // Lowered threshold
+          if (result.score < 0.85) {
+            console.warn(`Low confidence for "${result.column}", keeping original name`);
+            return result.column;
+          }
+          return result.standard;
         });
-        // Ensure output length matches input
-        const finalCols = columnNames.map((col, idx) =>
-          validColumns.includes(col) ? normalizedCols[validColumns.indexOf(col)] : col
-        );
+        // Merge Sentence-BERT results with normalizedCols, only updating unmatched columns
+        let bertIndex = 0;
+        const finalCols = normalizedCols.map((col, idx) => {
+          if (col === validColumns[idx] && !referenceTerms[col.toLowerCase()]) {
+            return bertNormalizedCols[bertIndex++] || col;
+          }
+          return col;
+        });
+        console.log('Final normalized columns:', finalCols);
         resolve(finalCols);
       } catch (err) {
-        console.error(`Failed to parse Python output: ${output}`);
-        reject(err);
+        console.error(`Failed to parse Python output: ${output}, Error: ${err.message}`);
+        resolve(normalizedCols); // Return current normalized columns if parsing fails
       }
     });
   });
@@ -237,8 +356,7 @@ const detectColumnLanguage = (columnNames) => {
       'eng': 'en', // English
       'fra': 'fr', // French
       'spa': 'es', // Spanish
-      'deu': 'de', // German
-
+      'deu': 'de' // German
     };
     return langMap[langCode] || 'en';
   } catch (err) {
@@ -247,11 +365,46 @@ const detectColumnLanguage = (columnNames) => {
   }
 };
 
+// Log unrecognized columns for future synonym expansion
+const logUnrecognizedColumns = async (unrecognizedColumns, detectedLang, dataType, userId, sampleData) => {
+  if (unrecognizedColumns.length === 0) return;
+  console.log(`Logging unrecognized columns for review: ${unrecognizedColumns.join(', ')}`);
+  const logEntries = unrecognizedColumns.map(col => {
+    const colIndex = unrecognizedColumns.indexOf(col);
+    const sample = sampleData[colIndex] || 'N/A';
+    let dataTypeHint = 'string';
+    if (/^\d+(\.\d{1,2})?$/.test(sample)) {
+      dataTypeHint = 'number';
+    } else if (/^\d{4}-\d{2}-\d{2}$/.test(sample)) {
+      dataTypeHint = 'date';
+    }
+    return {
+      column: col,
+      sampleData: sample,
+      dataTypeHint,
+      suggestedStandard: dataType === 'offres' && dataTypeHint === 'number' ? 'net_amount' : 'unknown'
+    };
+  });
+  try {
+    await UploadLog.create({
+      userId,
+      filename: 'synonym_suggestion',
+      dataType,
+      status: 'success',
+      detectedLanguage: detectedLang,
+      errorMessage: `Unrecognized columns: ${JSON.stringify(logEntries)}`
+    });
+  } catch (err) {
+    console.error(`Failed to log unrecognized columns: ${err.message}`);
+    // Continue upload even if logging fails
+  }
+};
+
 // Upload and normalize trade data
 export const uploadTradeData = async (req, res) => {
   try {
     const file = req.file;
-    const { userId, dataType } = req.body;
+    let { userId, dataType } = req.body;
 
     // Get user language from Accept-Language header
     const userLang = req.headers['accept-language']?.split(',')[0] || 'en';
@@ -265,9 +418,8 @@ export const uploadTradeData = async (req, res) => {
       return res.status(400).json({ message: message[0] });
     }
     if (!dataType || !['production', 'stocks', 'offres'].includes(dataType)) {
-      fs.unlinkSync(file.path);
-      const message = await translateText('Invalid data type. Choose between production, stocks, or offers.', 'en', userLang);
-      return res.status(400).json({ message: message[0] });
+      console.warn(`Invalid data type provided: "${dataType}". Will determine automatically.`);
+      dataType = null; // Trigger auto-detection
     }
 
     let results = [];
@@ -325,17 +477,50 @@ export const uploadTradeData = async (req, res) => {
     // Debug: Log raw columns
     console.log('Raw columns:', columns);
 
+    // Extract sample data for heuristic matching
+    const sampleData = results.length > 0 ? columns.map(col => String(results[0][col] || '')) : [];
+
     // Detect language of column names
     const detectedLang = detectColumnLanguage(columns);
+
+    // Suggest data type and override if mismatch
+    const suggestedDataType = suggestDataType(columns);
+    let warnings = [];
+    if (dataType && dataType !== suggestedDataType) {
+      console.warn(`Data type mismatch: Provided "${dataType}", Overriding with "${suggestedDataType}" based on columns: ${columns.join(', ')}`);
+      warnings.push(`Data type "${dataType}" was overridden to "${suggestedDataType}" based on columns (e.g., ${columns.join(', ')}).`);
+      dataType = suggestedDataType;
+    } else if (!dataType) {
+      console.log(`No data type provided, using suggested type: "${suggestedDataType}"`);
+      dataType = suggestedDataType;
+    }
 
     // Store original columns for traceability
     const originalColumns = [...columns];
 
     // Normalize column names
-    const normalizedColumns = await normalizeColumnNames(columns, detectedLang);
+    const normalizedColumns = await normalizeColumnNames(columns, detectedLang, dataType, sampleData);
+
+    // Validate normalized columns (relaxed validation)
+    const { missing, unexpected } = validateColumnsForDataType(normalizedColumns, dataType);
+    if (unexpected.length > 0) {
+      fs.unlinkSync(file.path);
+      const message = await translateText(
+        `Invalid columns for data type "${dataType}": ${unexpected.join(', ')}. These columns are not allowed.`,
+        'en', userLang
+      );
+      return res.status(400).json({ message: message[0] });
+    }
+    if (missing.length > 0) {
+      console.warn(`Missing required columns for "${dataType}": ${missing.join(', ')}. Proceeding with available columns.`);
+      warnings.push(`Missing required columns: ${missing.join(', ')}. Data was processed with available columns.`);
+    }
+
+    // Log unrecognized columns before saving Trade (fileId will be null)
     const unrecognizedColumns = normalizedColumns.filter(col => !standardColumnsRef.includes(col));
     if (unrecognizedColumns.length > 0) {
-      console.warn(`Unrecognized columns: ${unrecognizedColumns.join(', ')}`);
+      await logUnrecognizedColumns(unrecognizedColumns, detectedLang, dataType, userId, sampleData);
+      warnings.push(`Some columns were not recognized and kept as-is: ${unrecognizedColumns.join(', ')}. These have been logged for review.`);
     }
 
     const finalColumns = normalizedColumns;
@@ -343,7 +528,7 @@ export const uploadTradeData = async (req, res) => {
       const normalizedEntry = {};
       columns.forEach((col, idx) => {
         const normCol = normalizedColumns[idx] || col;
-        normalizedEntry[normCol] = ['price', 'quantity', 'year', 'surface', 'yield', 'production'].includes(normCol)
+        normalizedEntry[normCol] = ['unit_price', 'total_price', 'net_amount', 'vat_amount', 'quantity', 'year', 'surface', 'yield', 'production'].includes(normCol)
           ? Number(entry[col] || 0)
           : String(entry[col] || '');
       });
@@ -364,8 +549,9 @@ export const uploadTradeData = async (req, res) => {
 
     await trade.save();
 
-    const errorMessage = unrecognizedColumns.length > 0
-      ? await translateText(`Unrecognized columns: ${unrecognizedColumns.join(', ')}`, 'en', userLang)
+    // Combine warnings into errorMessage for UploadLog
+    const errorMessage = warnings.length > 0
+      ? await translateText(warnings.join(' '), 'en', userLang)
       : undefined;
 
     await UploadLog.create({
@@ -375,26 +561,33 @@ export const uploadTradeData = async (req, res) => {
       dataType,
       status: 'success',
       detectedLanguage: detectedLang,
-      errorMessage: errorMessage ? errorMessage[0] : undefined,
+      errorMessage: errorMessage ? errorMessage[0] : undefined
     });
 
     fs.unlinkSync(file.path);
-    const successMessage = await translateText('File uploaded successfully', 'en', userLang);
-    res.json({ message: successMessage[0], trade });
+    const successMessage = await translateText(
+      `File uploaded successfully. ${warnings.length > 0 ? warnings.join(' ') : ''}`,
+      'en', userLang
+    );
+    res.json({ message: successMessage[0], trade, warnings });
   } catch (error) {
-    console.error('Upload error:', error.message);
+    console.error('Upload error:', error.message, error.stack);
     if (fs.existsSync(req.file?.path)) fs.unlinkSync(req.file.path);
 
     const userLang = req.headers['accept-language']?.split(',')[0] || 'en';
     const errorMessage = await translateText(`Server error during upload: ${error.message}`, 'en', userLang);
 
-    await UploadLog.create({
-      userId: req.body.userId || 'unknown',
-      filename: req.file?.originalname || 'unknown',
-      dataType: req.body.dataType || 'unknown',
-      status: 'failed',
-      errorMessage: error.message,
-    });
+    // Only create UploadLog if userId is available
+    if (req.body.userId) {
+      await UploadLog.create({
+        userId: req.body.userId,
+        filename: req.file?.originalname || 'unknown',
+        dataType: req.body.dataType || 'unknown',
+        status: 'failed',
+        detectedLanguage: 'unknown',
+        errorMessage: error.message
+      });
+    }
 
     res.status(500).json({ message: errorMessage[0] });
   }
@@ -597,7 +790,7 @@ export const addTradeRow = async (req, res) => {
     }
 
     const newRow = (trade.columns || []).reduce((acc, col) => {
-      acc[col] = ['price', 'quantity', 'year', 'surface', 'yield', 'production'].includes(col) ? 0 : '';
+      acc[col] = ['unit_price', 'total_price', 'net_amount', 'vat_amount', 'quantity', 'year', 'surface', 'yield', 'production'].includes(col) ? 0 : '';
       return acc;
     }, {});
 
@@ -625,7 +818,7 @@ export const deleteTradeRow = async (req, res) => {
     const trade = await Trade.findOne({ userId, _id: fileId });
     if (!trade) {
       const message = await translateText('File not found', 'en', userLang);
-      return res.status(404).json({ message: message[0] });
+      return res.status(400).json({ message: message[0] });
     }
 
     if (rowIndex < 0 || rowIndex >= trade.data.length) {

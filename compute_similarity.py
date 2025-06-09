@@ -6,27 +6,28 @@ from sentence_transformers import SentenceTransformer, util
 sys.stdin.reconfigure(encoding='utf-8')
 sys.stdout.reconfigure(encoding='utf-8')
 
-# Load the multilingual Sentence-BERT model
-model = SentenceTransformer('paraphrase-multilingual-MiniLM-L12-v2')
+# Load the pre-trained Sentence-BERT model from Hugging Face
+model = SentenceTransformer('paraphrase-multilingual-mpnet-base-v2')
 
-def compute_best_matches(column_names, reference_terms):
+def compute_best_matches(column_names, reference_terms, data_type=None):
     # Validate and clean column names
     valid_columns = [str(col).strip() for col in column_names if col and isinstance(col, (str, int, float)) and str(col).strip()]
     if not valid_columns:
         print("Warning: No valid column names provided", file=sys.stderr)
         return [{"column": col, "best_match": col, "score": 0.0, "standard": col} for col in column_names]
 
-    # Debug: Log input columns
-    print(f"Input columns: {valid_columns}", file=sys.stderr)
+    # Debug: Log input columns and data type
+    print(f"Input columns: {valid_columns}, Data type: {data_type or 'None'}", file=sys.stderr)
 
-    # Encode valid column names
+    # Encode valid column names with context (append data_type if provided)
     try:
-        col_embeddings = model.encode(valid_columns, convert_to_tensor=True, show_progress_bar=False)
+        input_texts = [f"{col} ({data_type})" if data_type else col for col in valid_columns]
+        col_embeddings = model.encode(input_texts, convert_to_tensor=True, show_progress_bar=False)
     except Exception as e:
         print(f"Error encoding columns: {str(e)}", file=sys.stderr)
         return [{"column": col, "best_match": col, "score": 0.0, "standard": col} for col in column_names]
 
-    # Encode all reference terms
+    # Encode reference terms
     ref_terms_list = list(reference_terms.keys())
     try:
         ref_embeddings = model.encode(ref_terms_list, convert_to_tensor=True, show_progress_bar=False)
@@ -73,11 +74,12 @@ if __name__ == "__main__":
     try:
         # Read input from Node.js
         input_data = json.loads(sys.stdin.read())
-        column_names = input_data["column_names"]
-        reference_terms = input_data["reference_terms"]
+        column_names = input_data.get("column_names", [])
+        reference_terms = input_data.get("reference_terms", {})
+        data_type = input_data.get("data_type")  # Allow None
 
         # Compute the best matches
-        results = compute_best_matches(column_names, reference_terms)
+        results = compute_best_matches(column_names, reference_terms, data_type)
 
         # Output results as JSON
         print(json.dumps(results, ensure_ascii=False))

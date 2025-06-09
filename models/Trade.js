@@ -4,10 +4,10 @@ import mongoose from 'mongoose';
 const tradeSchema = new mongoose.Schema({
   userId: { type: String, required: true },
   filename: { type: String, required: true },
-  dataType: { type: String, required: true, enum: ['production', 'stocks', 'offres'] }, // Type de données
-  data: [mongoose.Schema.Types.Mixed], // Tableau d'objets sans structure imposée
-  columns: [{ type: String }], // Liste des colonnes détectées dans le fichier
-  rowCount: { type: Number }, // Nombre de lignes dans le fichier
+  dataType: { type: String, required: true, enum: ['production', 'stocks', 'offres'] },
+  data: [mongoose.Schema.Types.Mixed],
+  columns: [{ type: String }],
+  rowCount: { type: Number },
   uploadedAt: { type: Date, default: Date.now },
 });
 
