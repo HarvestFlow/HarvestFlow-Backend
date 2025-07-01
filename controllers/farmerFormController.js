@@ -1,5 +1,7 @@
 import mongoose from 'mongoose';
 import FarmerForm from '../models/FarmerForm.js';
+import BuyerForm from '../models/BuyerForm.js'
+import Offer from '../models/Offer.js'; // Add this import
 import { generateFarmerFormVector } from '../utils/offerNormalization.js';
 import { triggerRecalculation } from '../utils/matching.js';
 import asyncHandler from 'express-async-handler';
@@ -105,13 +107,29 @@ export const getFarmerForms = async (req, res) => {
 // @route   GET /farmerform/farmer
 // @access  Public
 export const getAllFarmerForms = async (req, res) => {
-    try {
-        const forms = await FarmerForm.find().populate('userId', 'email').sort({ createdAt: -1 });
-        res.status(200).json(forms);
-    } catch (error) {
-        console.error('Error fetching all farmer forms:', error.message);
-        res.status(500).json({ error: 'Server error while fetching forms' });
-    }
+  try {
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 6;
+    const skip = (page - 1) * limit;
+
+    const offers = await FarmerForm.find()
+      .populate('userId', 'email')
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit)
+      .lean();
+
+    const totalOffers = await FarmerForm.countDocuments();
+
+    res.status(200).json({
+      offers,
+      totalOffers,
+      totalPages: Math.ceil(totalOffers / limit),
+    });
+  } catch (error) {
+    console.error('Error fetching all farmer forms:', error.message);
+    res.status(500).json({ error: 'Server error while fetching forms' });
+  }
 };
 
 // @desc    Update a farmer form
@@ -249,13 +267,9 @@ export const getRecommendations = asyncHandler(async (req, res) => {
     }
   
     try {
-      // Find the farmer form and populate BuyerForm for recommendations.item.id
+      // Find the farmer form and populate recommendations
       const farmerForm = await FarmerForm.findById(offerId)
         .select('recommendations')
-        .populate({
-          path: 'recommendations.item.id',
-          model: 'BuyerForm',
-        })
         .lean();
   
       if (!farmerForm) {
@@ -263,22 +277,44 @@ export const getRecommendations = asyncHandler(async (req, res) => {
         return res.status(404).json({ error: 'Offer not found' });
       }
   
-      // Map recommendations to merge populated BuyerForm data with item fields
-      const recommendations = farmerForm.recommendations.map((rec) => ({
-        _id: rec._id,
-        type: rec.type,
-        item: {
-          ...rec.item.id, // Populated BuyerForm fields
-          title: rec.item.title, // Embedded fields from FarmerForm
-          quantity: rec.item.quantity,
-          price: rec.item.price,
-          location: rec.item.location,
-          contact: rec.item.contact,
-          email: rec.item.email,
-        },
-        similarity: rec.similarity,
-        reason: rec.reason,
-      }));
+      // Fetch full details for each recommendation
+      const recommendations = await Promise.all(
+        farmerForm.recommendations.map(async (rec) => {
+          let itemDetails = {};
+          if (rec.type === 'buyer_form' && mongoose.Types.ObjectId.isValid(rec.item.id)) {
+            const buyerForm = await BuyerForm.findById(rec.item.id).lean();
+            if (buyerForm) {
+              itemDetails = {
+                _id: buyerForm._id,
+                title: buyerForm.title,
+                company: buyerForm.company,
+                productCategory: buyerForm.productCategory,
+                productNeeded: buyerForm.productNeeded,
+                quantityDesired: buyerForm.quantityDesired,
+                pricePerUnit: buyerForm.pricePerUnit,
+                paymentTerms: buyerForm.paymentTerms,
+                deliveryLocation: buyerForm.deliveryLocation,
+                preferredSuppliersFrom: buyerForm.preferredSuppliersFrom,
+                productSpecifications: buyerForm.productSpecifications,
+                contactName: buyerForm.contactName,
+                offerEndDate: buyerForm.offerEndDate,
+                userId: buyerForm.userId,
+                verifiedStatus: buyerForm.verifiedStatus,
+                vector: buyerForm.vector,
+                createdAt: buyerForm.createdAt,
+                updatedAt: buyerForm.updatedAt,
+              };
+            }
+          }
+          return {
+            _id: rec._id,
+            type: rec.type,
+            item: itemDetails,
+            similarity: rec.similarity,
+            reason: rec.reason,
+          };
+        })
+      );
   
       // Log for debugging
       console.log('Recommendations Fetched:', {
@@ -290,6 +326,109 @@ export const getRecommendations = asyncHandler(async (req, res) => {
       res.status(200).json(recommendations);
     } catch (error) {
       console.error('Error in getRecommendations:', {
+        message: error.message,
+        stack: error.stack,
+      });
+      res.status(500).json({ error: 'Internal Server Error', details: error.message });
+    }
+  });
+  
+  // @desc    Get recommendations with full offer details for a BuyerForm
+  // @route   GET /farmerform/buyer/recommendations/:buyerFormId
+  // @access  Private
+  export const getBuyerRecommendations = asyncHandler(async (req, res) => {
+    console.log('getBuyerRecommendations called with buyerFormId:', req.params.buyerFormId);
+    const { buyerFormId } = req.params;
+  
+    // Validate buyerFormId
+    if (!buyerFormId.match(/^[0-9a-fA-F]{24}$/)) {
+      console.log('Invalid buyerFormId:', buyerFormId);
+      return res.status(400).json({ error: 'Invalid buyer form ID' });
+    }
+  
+    try {
+      // Find the buyer form
+      const buyerForm = await BuyerForm.findById(buyerFormId)
+        .select('recommendations')
+        .lean();
+  
+      if (!buyerForm) {
+        console.log('BuyerForm not found for buyerFormId:', buyerFormId);
+        return res.status(404).json({ error: 'Buyer form not found' });
+      }
+  
+      // Fetch full details for each recommendation
+      const recommendations = await Promise.all(
+        buyerForm.recommendations.map(async (rec) => {
+          let itemDetails = {};
+          if (rec.type === 'farmer_form' && mongoose.Types.ObjectId.isValid(rec.item.id)) {
+            const farmerForm = await FarmerForm.findById(rec.item.id).lean();
+            if (farmerForm) {
+              itemDetails = {
+                _id: farmerForm._id,
+                title: farmerForm.title,
+                company: farmerForm.company,
+                productCategory: farmerForm.productCategory,
+                productOffered: farmerForm.productOffered,
+                quantityAvailable: farmerForm.quantityAvailable,
+                pricePerUnit: farmerForm.pricePerUnit,
+                paymentTerms: farmerForm.paymentTerms,
+                destination: farmerForm.destination,
+                lookingForBuyersFrom: farmerForm.lookingForBuyersFrom,
+                productDescription: farmerForm.productDescription,
+                contactName: farmerForm.contactName,
+                verifiedStatus: farmerForm.verifiedStatus,
+                availabilityEndDate: farmerForm.availabilityEndDate,
+                userId: farmerForm.userId,
+                vector: farmerForm.vector,
+                createdAt: farmerForm.createdAt,
+                updatedAt: farmerForm.updatedAt,
+              };
+            }
+          } else if (rec.type === 'external_offer' && rec.item.id) {
+            const offer = await Offer.findOne({ offer_id: rec.item.id }).lean();
+            if (offer) {
+              itemDetails = {
+                offer_id: offer.offer_id,
+                title: offer.title,
+                price: offer.price,
+                min_quantity: offer.min_quantity,
+                supplier: offer.supplier,
+                supplier_info: offer.supplier_info,
+                contact_name: offer.contact_name,
+                email: offer.email,
+                phone: offer.phone,
+                image_url: offer.image_url,
+                crop_type: offer.crop_type,
+                vector: offer.vector,
+                created_at: offer.created_at,
+                last_updated: offer.last_updated,
+                scraped_at: offer.scraped_at,
+                status: offer.status,
+                is_manually_edited: offer.is_manually_edited,
+              };
+            }
+          }
+          return {
+            _id: rec._id,
+            type: rec.type,
+            item: itemDetails,
+            similarity: rec.similarity,
+            reason: rec.reason,
+          };
+        })
+      );
+  
+      // Log for debugging
+      console.log('Buyer Recommendations Fetched:', {
+        buyerFormId,
+        recommendationsCount: recommendations.length,
+        recommendations,
+      });
+  
+      res.status(200).json(recommendations);
+    } catch (error) {
+      console.error('Error in getBuyerRecommendations:', {
         message: error.message,
         stack: error.stack,
       });

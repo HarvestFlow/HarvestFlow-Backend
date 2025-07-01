@@ -36,8 +36,11 @@ const buyerFormSchema = new mongoose.Schema({
     recommendations: [{
         type: { type: String, enum: ['farmer_form', 'external_offer'] },
         item: {
-            id: { type: String },
-            title: { type: String },
+            id: {
+                type: mongoose.Schema.Types.Mixed, // Allow String or ObjectId
+                required: true,
+            },
+                        title: { type: String },
             quantity: { type: String },
             price: { type: String },
             location: { type: String },

@@ -48,10 +48,10 @@ export const createParcel = async (req, res) => {
   }
 };
 
-// Update shape properties (cropType, plantingDate, etc.)
+// Update shape properties and geometry
 export const updateShape = async (req, res) => {
   const { userId, shapeId } = req.params;
-  const { cropType, plantingDate, growthStage, estimatedYield, expectedHarvestDate } = req.body;
+  const { properties, geometry } = req.body;
 
   try {
     const parcelle = await Parcelle.findOne({ userId });
@@ -65,17 +65,27 @@ export const updateShape = async (req, res) => {
       return res.status(404).json({ message: "Shape not found" });
     }
 
-    // Mise à jour des attributs de la shape
-    shape.properties.cropType = cropType;
-    shape.properties.plantingDate = plantingDate;
-    shape.properties.growthStage = growthStage;
-    shape.properties.estimatedYield = estimatedYield;
-    shape.properties.expectedHarvestDate = expectedHarvestDate;
+    // Update properties and geometry
+    if (properties) {
+      shape.properties = {
+        ...shape.properties,
+        ...properties,
+        id: shape.properties.id, // Preserve properties.id
+      };
+    }
+    if (geometry) {
+      shape.geometry = geometry;
+    }
 
     await parcelle.save();
-    res.status(200).json(shape);
+    res.status(200).json({
+      success: true,
+      message: "Shape mis à jour avec succès",
+      data: shape,
+    });
   } catch (error) {
-    res.status(500).json({ message: "Error updating shape", error });
+    console.error("Error updating shape:", error);
+    res.status(500).json({ message: "Error updating shape", error: error.message });
   }
 };
 
@@ -102,13 +112,10 @@ export async function getParcelleByUserId(req, res) {
     return res.status(500).json({ message: "Error fetching Parcelle data." });
   }
 };
-
-// Delete a shape
 export const deleteShape = async (req, res) => {
   try {
     const { userId, shapeId } = req.params;
 
-    // Trouver le document de la parcelle pour cet utilisateur
     const parcel = await Parcelle.findOne({ userId });
     if (!parcel) {
       return res.status(404).json({
@@ -117,9 +124,11 @@ export const deleteShape = async (req, res) => {
       });
     }
 
-    // Filtrer les shapes pour supprimer celui avec l'ID spécifié
     const initialLength = parcel.shapes.length;
-    parcel.shapes = parcel.shapes.filter((shape) => shape._id.toString() !== shapeId);
+    // Try filtering by _id first, then by properties.id
+    parcel.shapes = parcel.shapes.filter(
+      (shape) => shape._id.toString() !== shapeId && shape.properties.id.toString() !== shapeId
+    );
 
     if (parcel.shapes.length === initialLength) {
       return res.status(404).json({
@@ -128,7 +137,6 @@ export const deleteShape = async (req, res) => {
       });
     }
 
-    // Sauvegarder les modifications
     await parcel.save();
 
     res.status(200).json({
@@ -145,7 +153,6 @@ export const deleteShape = async (req, res) => {
     });
   }
 };
-
 // Get shape coordinates
 export const getShapeCoordinates = async (req, res) => {
   try {

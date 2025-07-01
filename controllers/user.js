@@ -279,7 +279,7 @@ export async function createUser(req, res) {
   }
 
 
-export async function updateUser(req, res) {
+  export async function updateUser(req, res) {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
       return res.status(400).json({ errors: errors.array() });
@@ -292,7 +292,7 @@ export async function updateUser(req, res) {
       const user = await User.findById(req.auth.userId); // Récupérer l'utilisateur connecté
   
       // Vérifier si l'utilisateur n'est pas admin et que seul le superAdmin peut effectuer la mise à jour
-      if (user.role !== 'superAdmin') {
+      if (user.role !== 'admin' && user.role !== 'superAdmin') {
         return res.status(401).json({ message: "Unauthorized action" });
       }
   
@@ -306,11 +306,7 @@ export async function updateUser(req, res) {
       if (!updatedUser) {
         return res.status(404).json({ message: "User not found" });
       }
-      user.history.push({ 
-        action: `You updated user: ${updatedUser.firstname} ${updatedUser.lastname} (ID: ${userId})`, 
-        timestamp: new Date() 
-      });
-      await user.save();
+  
       console.log("User updated successfully:", updatedUser);
       return res.json({ user: updatedUser });
     } catch (error) {
@@ -318,17 +314,15 @@ export async function updateUser(req, res) {
       return res.status(500).json({ message: "Error updating user", error });
     }
   }
-  // Fonction pour supprimer un utilisateur par le superAdmin
-export async function deleteUser(req, res) {
+  export async function deleteUser(req, res) {
     try {
-      const { role, userId: currentUserId } = req.auth; // Récupérer le rôle et l'ID de l'utilisateur connecté (superAdmin)
-      const { userId } = req.params; // Récupérer l'ID de l'utilisateur à supprimer
+      const { role, userId: currentUserId } = req.auth;
+      const { userId } = req.params;
   
-      if (role !== 'superAdmin') {
+      if (role !== 'admin') {
         return res.status(403).json({ message: 'Unauthorized action' });
       }
   
-      // Vérifier si l'ID de l'utilisateur à supprimer est valide
       if (!userId || !mongoose.Types.ObjectId.isValid(userId)) {
         return res.status(400).json({ message: 'Invalid user ID' });
       }
@@ -338,25 +332,13 @@ export async function deleteUser(req, res) {
       if (!deletedUser) {
         return res.status(404).json({ message: 'User not found' });
       }
-      
-      // Ajouter l'action de suppression à l'historique de l'utilisateur qui effectue la suppression
-      const currentUser = await User.findById(currentUserId);
-      if (!currentUser) {
-        return res.status(404).json({ message: 'Current user not found' });
-      }
-      currentUser.history.push({ 
-        action: `You have deleted the user: ${deletedUser.firstname} ${deletedUser.lastname} (ID: ${userId})`, 
-        timestamp: new Date() 
-      });
-          await currentUser.save();
   
       return res.status(200).json({ message: 'User deleted successfully', user: deletedUser });
     } catch (error) {
-      console.error(error);
-      return res.status(500).json({ message: 'Error deleting user', error });
+      console.error('Error deleting user:', error);
+      return res.status(500).json({ message: 'Error deleting user', error: error.message });
     }
-  }  
-  
+  }
   export async function getAllAdmins(req, res) {
     try {
       const { role } = req.auth; 
@@ -509,7 +491,9 @@ export const updateUserActivation = async (req, res) => {
 };
 export const getAllUsers = async (req, res) => {
   try {
-    const users = await User.find({}, '_id email isActivated certification').lean(); // Sélectionne uniquement les champs nécessaires
+    const users = await User.find({})
+      .select('-password') // Exclut le champ password pour des raisons de sécurité
+      .lean(); // Convertit les documents Mongoose en objets JavaScript simples
     res.status(200).json(users);
   } catch (error) {
     res.status(500).json({

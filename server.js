@@ -13,6 +13,9 @@ import dailyreommendationRoutes from './routes/dailyrecommendation.js';
 import FarmerForm from './routes/farmerForm.js';
 import matchRoutes from './routes/match.js';
 import { setupChangeStreams } from './utils/changeStream.js'; // Add this
+import transactionRoutes from './routes/transactionRoutes.js';
+import stockRoutes from './routes/stockRoutes.js';
+import carrierRoutes from './routes/carrierRoutes.js';
 
 import http from 'http';
 import { Server } from 'socket.io';
@@ -80,6 +83,9 @@ app.use('/api', scrapeRoutes);
 app.use('/api', buyerRoutes);
 app.use('/api/trade', tradeRouter);
 app.use('/matches', matchRoutes);
+app.use('/transaction', transactionRoutes);
+app.use('/api/stock', stockRoutes);
+app.use('/api', carrierRoutes);
 
 // WebSocket setup with Socket.IO
 io.on('connection', (socket) => {

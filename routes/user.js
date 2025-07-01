@@ -1,6 +1,7 @@
 // user.js
 import express from "express";
 import { auth } from "../middlewares/auth.js";
+import { sendContactOffer } from "../controllers/contactOffer.js";
 
 import {
  
@@ -75,6 +76,7 @@ router.route("/Answers").post(VerifyAnswers);
 router.route("/CodeVerif").post(SendCodeVerif);
 router.route("/VerifNewUser").post(VerifNewUser);
 router.route("/VerifyAndSendCode").post(VerifyAnswersAndSendCode);
+router.post('/api/contact-offer', sendContactOffer);
 
 
 // New route for fetching teams associated with a user

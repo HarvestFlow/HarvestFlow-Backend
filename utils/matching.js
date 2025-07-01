@@ -242,7 +242,7 @@ const findBuyerMatches = async ({ queryVector, cropType, lookingForBuyersFrom = 
 
         logger.info(`Matching for FarmerForm ${farmerFormId}, cropType: ${cropType}, lookingForBuyersFrom: ${lookingForBuyersFrom}`);
 
-        const weights = [0.5, 0.3, 0.1, 0.1];
+        const weights = [0.5, 0.1, 0.1, 0.4];
         const totalWeight = weights.reduce((sum, w) => sum + w, 0);
         const normalizedWeights = weights.map(w => w / totalWeight);
 

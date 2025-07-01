@@ -25,8 +25,7 @@ router.get("/parcelle/:userId", getParcelleByUserId);
 router.delete("/parcelle/:userId/:shapeId", deleteShape);
 
 // Update shape properties (cropType, plantingDate, etc.)
-router.put("/parcelle/:userId/:shapeId", updateShape);
-
+router.put("/parcelle/:userId/:shapeId", updateShape); // Updated to handle geometry and properties
 // Nouvelle route pour mettre à jour la température moyenne et le pays
 router.put("/update-shape/:parcelleId/:shapeId", updateShapeWeather);
 

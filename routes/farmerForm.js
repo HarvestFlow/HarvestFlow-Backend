@@ -1,5 +1,5 @@
 import express from 'express';
-import { createFarmerForm, getFarmerForms, getAllFarmerForms, updateFarmerForm, deleteFarmerForm ,getRecommendations} from '../controllers/farmerFormController.js';
+import { createFarmerForm, getFarmerForms, getAllFarmerForms, updateFarmerForm, deleteFarmerForm ,getRecommendations,getBuyerRecommendations} from '../controllers/farmerFormController.js';
 import { createBuyerForm, getBuyerForms, getAllBuyerForms, updateBuyerForm, deleteBuyerForm } from '../controllers/BuyerFormController.js';
 import { getAlibabaWheatOffers } from '../controllers/alibabaWheatController.js';
 
@@ -22,5 +22,5 @@ router.get('/buyer/:userId', getBuyerForms);
 router.get('/buyer', getAllBuyerForms);
 router.put('/buyerforms/:id', updateBuyerForm);
 router.delete('/buyerforms/:formId', deleteBuyerForm);
-
+router.get('/buyer/recommendations/:buyerFormId', getBuyerRecommendations);
 export default router;
