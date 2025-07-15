@@ -7,13 +7,13 @@ const userSchema = new mongoose.Schema({
   },
   lastname: {
     type: String,
-    required: false, // Make lastname optional
+    required: false,
   },
   securityQuestions: [
     {
       type: String,
-      required: false
-    }
+      required: false,
+    },
   ],
   phone: {
     type: Number,
@@ -34,34 +34,38 @@ const userSchema = new mongoose.Schema({
   },
   imageUser: {
     type: String,
-    required: false, // Make imageUser optional
+    required: false,
   },
-
   certification: {
     type: String,
-    required: false, // Make imageUser optional
+    required: false,
   },
   companyname: {
     type: String,
-    required: false, // Make imageUser optional
+    required: false,
   },
-  
-  isActivated:{
-    type :Boolean,
-    required:false,
+  isActivated: {
+    type: Boolean,
+    required: false,
   },
-
   createdAt: {
     type: Date,
-    default: Date.now // La date par défaut est la date actuelle lors de la création du profil
+    default: Date.now,
   },
   role: {
     type: String,
     enum: ["admin", "farmer", "distributor", "transporter", "superAdmin"],
   },
- 
-  
-
+  contactAttempts: {
+    count: {
+      type: Number,
+      default: 0, // Tracks number of contact attempts today
+    },
+    lastReset: {
+      type: Date,
+      default: Date.now, // Tracks when the count was last reset
+    },
+  },
 });
 
 const User = mongoose.model("User", userSchema);

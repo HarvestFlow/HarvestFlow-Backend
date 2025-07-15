@@ -4,6 +4,7 @@ import bcrypt from "bcryptjs";
 import User from "../models/user.js";
 import { auth, invalidateRefreshToken } from '../middlewares/auth.js';
 import { signAccessToken, signRefreshToken , verifyRefreshToken} from "../middlewares/auth.js";
+import ContactRequest from '../models/contactRequest.js';
 
 import { validationResult } from "express-validator";
 import mongoose from "mongoose";
@@ -33,6 +34,111 @@ try {
 }
 
 
+const MAX_CONTACT_ATTEMPTS = 3;
+const ONE_DAY_MS = 24 * 60 * 60 * 1000;
+
+export async function contactOffer(req, res) {
+  try {
+    const { userId, firstname, email, company, toEmail, offerTitle } = req.body;
+
+    // Validate inputs
+    if (!userId || !firstname || !email || !company || !toEmail || !offerTitle) {
+      return res.status(400).json({ error: 'All fields are required' });
+    }
+
+    // Validate user
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    // Check contact attempts
+    const today = new Date().setHours(0, 0, 0, 0);
+    if (!user.contactAttempts) {
+      user.contactAttempts = { count: 0, lastReset: today };
+    }
+
+    if (user.contactAttempts.lastReset < today) {
+      user.contactAttempts = { count: 0, lastReset: today };
+    }
+
+    if (user.contactAttempts.count >= MAX_CONTACT_ATTEMPTS) {
+      return res.status(429).json({ error: 'Daily contact attempt limit reached' });
+    }
+
+    // Save contact request
+    const contactRequest = new ContactRequest({
+      userId,
+      firstname,
+      email,
+      company,
+      toEmail,
+      offerTitle,
+    });
+    await contactRequest.save();
+
+    // Increment contact attempts
+    user.contactAttempts.count += 1;
+    await user.save();
+
+    // Simulate sending email (replace with actual email logic)
+    console.log(`Sending email to ${toEmail} from ${email} regarding "${offerTitle}"`);
+
+    res.status(200).json({
+      message: 'Contact request sent successfully',
+      attemptsLeft: MAX_CONTACT_ATTEMPTS - user.contactAttempts.count,
+    });
+  } catch (error) {
+    console.error('Error in contactOffer:', error);
+    res.status(500).json({ error: 'Failed to send contact request' });
+  }
+}
+
+export async function getAllContactRequests(req, res) {
+  try {
+    const { userId } = req.query;
+
+    // Validate admin
+    const user = await User.findById(userId);
+    if (!user ) {
+      return res.status(403).json({ error: 'Unauthorized: Admin access required' });
+    }
+
+    // Fetch all contact requests
+    const contactRequests = await ContactRequest.find()
+      .populate('userId', 'firstname email')
+      .sort({ createdAt: -1 });
+
+    res.status(200).json(contactRequests);
+  } catch (error) {
+    console.error('Error fetching contact requests:', error);
+    res.status(500).json({ error: 'Failed to fetch contact requests' });
+  }
+}
+
+export async function getContactAttempts(req, res) {
+  try {
+    const { userId } = req.query;
+
+    // Validate user
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    // Check contact attempts
+    const today = new Date().setHours(0, 0, 0, 0);
+    if (!user.contactAttempts || user.contactAttempts.lastReset < today) {
+      user.contactAttempts = { count: 0, lastReset: today };
+      await user.save();
+    }
+
+    res.status(200).json({ attemptsLeft: MAX_CONTACT_ATTEMPTS - user.contactAttempts.count });
+  } catch (error) {
+    console.error('Error fetching contact attempts:', error);
+    res.status(500).json({ error: 'Failed to fetch contact attempts' });
+  }
+}
 export async function createUser(req, res) {
     // 1️⃣ **Validation des Données**
     const errors = validationResult(req);

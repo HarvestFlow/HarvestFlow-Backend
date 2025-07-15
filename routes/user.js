@@ -1,10 +1,6 @@
-// user.js
 import express from "express";
 import { auth } from "../middlewares/auth.js";
-import { sendContactOffer } from "../controllers/contactOffer.js";
-
-import {
- 
+import { sendContactOffer, getAllContactRequests, getContactAttempts } from '../controllers/contactOffer.js';import {
   createUser,
   login,
   logout,
@@ -13,72 +9,54 @@ import {
   updateUser,
   deleteUser,
   addAdmin,
-  updateProfile,
   updateUserActivation,
   getAllUsers,
 } from "../controllers/user.js";
-
-
-
 import {
-SendCodeForgot,
-VerifCodeForgot,
-ChangePasswordForgot,
-VerifyAnswers,
-SendCodeVerif,
-VerifNewUser,
-VerifyAndSendCode,
-VerifyAnswersAndSendCode,
+  SendCodeForgot,
+  VerifCodeForgot,
+  ChangePasswordForgot,
+  VerifyAnswers,
+  SendCodeVerif,
+  VerifNewUser,
+  VerifyAnswersAndSendCode,
 } from "../controllers/userVerif.js";
+import { updateFarmerProfile } from "../controllers/farmer.js";
 import multer from "multer";
-
-
-
-import {
-  updateFarmerProfile
-  } from "../controllers/farmer.js";
-
-
-
 
 const router = express.Router();
 
-//////////////// USER ACCES TO PLATFORM
+// User access to platform
 router.route("/").post(createUser);
 router.route("/login").post(login);
 router.route("/logout").post(logout);
-router.put('/update/:userId', auth, updateUserActivation); // :userId dans l'URL
+router.put("/update/:userId", auth, updateUserActivation);
 
-
-////////////////////////////////ADMIN ROUTES
-router.get('/getalladmin', auth,getAllAdmins);
+// Admin routes
+router.get("/getalladmin", auth, getAllAdmins);
 router.post("/addAdmin", auth, addAdmin);
 router.get("/getAllUsers", getAllUsers);
 
+// User routes
+router.put("/:userId", auth, updateUser);
+router.delete("/:userId", auth, deleteUser);
+router.route("/getProfile").get(auth, getProfile);
+router.put("/update-profile/:id", updateFarmerProfile);
+router.put("/update-activation", auth, updateUserActivation);
 
-///////////////////////////////USER ROUTES
-router.put('/:userId',auth, updateUser);
-router.delete('/:userId',auth, deleteUser);
-router.route ("/getProfile").get(auth,getProfile);
-
-router.put('/update-profile/:id', updateFarmerProfile);
-router.put('/update-activation', auth,updateUserActivation); // Nouvelle route sans :userId
-
-
-////////////////// RESET PASSWORD 
+// Reset password
 router.route("/forget").post(SendCodeForgot);
 router.route("/reset").post(VerifCodeForgot);
 router.route("/change").post(ChangePasswordForgot);
 router.route("/Answers").post(VerifyAnswers);
 
-
-///////////////////////// new user verification
+// New user verification
 router.route("/CodeVerif").post(SendCodeVerif);
 router.route("/VerifNewUser").post(VerifNewUser);
 router.route("/VerifyAndSendCode").post(VerifyAnswersAndSendCode);
-router.post('/api/contact-offer', sendContactOffer);
 
-
-// New route for fetching teams associated with a user
-
+// Contact offer and contact attempts (no auth middleware)
+router.post("/api/contact-offer", sendContactOffer);
+router.get('/contact-requests', getAllContactRequests);
+router.get('/contact-attempts', getContactAttempts);
 export default router;

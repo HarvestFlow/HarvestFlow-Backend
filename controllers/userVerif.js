@@ -449,7 +449,7 @@ let mailTransporter = nodemailer.createTransport({
     
         // Préparer les options de l'email
         const mailOptions = {
-          from: 'HARVESTFLOW',
+         from: 'HarvestFlow <briki.houda12345@gmail.com>',
           to: email,
           text: 'Verif Email?',
           subject: 'Verif Email',

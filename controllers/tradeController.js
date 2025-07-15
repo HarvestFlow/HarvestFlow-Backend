@@ -8,108 +8,117 @@ import { franc } from 'franc';
 // Expanded dictionary for column reference (financial terms included)
 const columnSynonyms = {
   quantity: [
-    'quantity', 'quantité', 'qté', 'volume', 'amount', 'qty',
-    'number', 'num', 'count', 'total_quantity', 'quantite', 'qte', 'amt',
-    'الكمية', 'كمية', 'عدد', 'مجموع_الكمية',
-    'cantidad', 'volumen', 'total_cantidad'
+    'quantity', 'quantité', 'qté', 'volume', 'amount', 'qty', 'number', 'num', 'count', 'total_quantity', 'quantite', 'qte', 'amt',
+    'الكمية', 'كمية', 'عدد', 'مجموع_الكمية', 'العدد', 'الحجم',
+    'cantidad', 'volumen', 'total_cantidad', 'cant', 'numero', 'total_cant'
   ],
   unit_price: [
-    'unit_price', 'unit price', 'price per unit', 'unit_cost', 'cost_per_unit', 'price_unit', 'rate',
-    'سعر_الوحدة', 'تكلفة_الوحدة',
-    'precio_por_unidad', 'precio_unitario', 'costo_por_unidad'
+    'unit_price', 'unit price', 'price per unit', 'unit_cost', 'cost_per_unit', 'price_unit', 'rate', 'unit_rate', 'prix_unitaire', 'prix_unit', 'cout_unitaire', 'coût_unitaire',
+    'سعر_الوحدة', 'تكلفة_الوحدة', 'سعر_وحدة', 'تكلفة_وحدة',
+    'precio_por_unidad', 'precio_unitario', 'costo_por_unidad', 'costo_unitario', 'precio_unit', 'coste_unitario'
   ],
   total_price: [
-    'total_price', 'total_cost', 'price', 'prix', 'cost', 'coût', 'value', 'valeur',
-    'montant_total', 'total_amount', 'montantTTC', 'montant_ttc', 'ttc', 'total_incl_tax',
-    'سعر', 'السعر', 'تكلفة', 'إجمالي_السعر',
-    'precio', 'costo', 'precio_total', 'costo_total', 'importe_con_impuestos', 'monto_total'
+    'total_price', 'total_cost', 'price', 'prix', 'cost', 'coût', 'value', 'valeur', 'montant_total', 'total_amount', 'montantTTC', 'montant_ttc', 'ttc', 'total_incl_tax', 'montant_total_ttc', 'total_ttc',
+    'السعر', 'تكلفة', 'إجمالي_السعر', 'القيمة', 'المبلغ_الإجمالي', 'المبلغ_مع_الضريبة',
+    'precio', 'costo', 'precio_total', 'costo_total', 'importe_con_impuestos', 'monto_total', 'total_con_impuestos', 'importe_total'
   ],
   net_amount: [
-    'net_amount', 'montantHT', 'montant_ht', 'amount_excl_tax', 'ht', 'base_amount',
-    'montant_hors_taxes', 'montant_hors_taxe',
-    'importe_sin_impuestos', 'monto_sin_impuestos'
+    'net_amount', 'montantHT', 'montant_ht', 'amount_excl_tax', 'ht', 'base_amount', 'montant_hors_taxes', 'montant_hors_taxe', 'montant_sans_tva',
+    'المبلغ_الصافي', 'المبلغ_بدون_الضريبة',
+    'importe_sin_impuestos', 'monto_sin_impuestos', 'importe_neto', 'monto_neto'
   ],
   vat_amount: [
-    'vat_amount', 'montantTVA', 'montant_tva', 'tax_amount', 'tva', 'vat',
-    'montant_de_la_tva', 'taxe_sur_la_valeur_ajoutée',
-    'importe_iva', 'monto_iva'
+    'vat_amount', 'montantTVA', 'montant_tva', 'tax_amount', 'tva', 'vat', 'montant_de_la_tva', 'taxe_sur_la_valeur_ajoutée', 'taxe_valeur_ajoutée', 'tva (%)', 'tax (%)',
+    'مبلغ_الضريبة', 'الضريبة', 'ضريبة_القيمة_المضافة', 'ضريبة (%)',
+    'importe_iva', 'monto_iva', 'iva', 'iva (%)', 'impuesto', 'impuesto_iva'
   ],
   year: [
-    'year', 'année', 'yr', 'annee', 'y', 'season', 'harvest_year',
-    'سنة', 'السنة', 'عام',
-    'año', 'ano'
+    'year', 'année', 'yr', 'annee', 'y', 'season', 'harvest_year', 'annee_recolte', 'année_récolte',
+    'سنة', 'السنة', 'عام', 'سنة_الحصاد',
+    'año', 'ano', 'año_cosecha'
   ],
   surface: [
-    'surface', 'superficie', 'superficie_récoltée_(ha)', 'acreage', 'hectares', 'ha', 'land_area', 'surface_area', 'superfice',
-    'مساحة', 'السطح', 'هكتار',
-    'superficie', 'hectáreas', 'area'
+    'surface', 'superficie', 'superficie_récoltée_(ha)', 'acreage', 'hectares', 'ha', 'land_area', 'surface_area', 'superfice', 'surface_ha',
+    'مساحة', 'السطح', 'هكتار', 'المساحة_المستغلة',
+    'superficie', 'hectáreas', 'area', 'área_cosechada', 'hectareas'
   ],
   yield: [
-    'yield', 'rendement', 'productivity', 'rendement_(kg/ha)', 'output_per_ha', 'yield_per_ha', 'productivity_rate', 'rendement_kg_ha',
-    'إنتاجية', 'المحصول', 'الغلة',
-    'rendimiento', 'productividad'
+    'yield', 'rendement', 'productivity', 'rendement_(kg/ha)', 'output_per_ha', 'yield_per_ha', 'productivity_rate', 'rendement_kg_ha', 'rendement_par_ha',
+    'إنتاجية', 'المحصول', 'الغلة', 'إنتاجية_للهكتار',
+    'rendimiento', 'productividad', 'rendimiento_por_ha', 'productividad_por_ha'
   ],
   production: [
-    'production', 'output', 'production_(t)', 'total_production', 'harvest', 'total_output', 'prod', 'tonnage', 'tons', 'tonnes',
-    'إنتاج', 'الإنتاج', 'محصول',
-    'producción', 'cosecha', 'produccion'
+    'production', 'output', 'production_(t)', 'total_production', 'harvest', 'total_output', 'prod', 'tonnage', 'tons', 'tonnes', 'production_tonnes',
+    'إنتاج', 'الإنتاج', 'محصول', 'إجمالي_الإنتاج',
+    'producción', 'cosecha', 'produccion', 'producción_total', 'toneladas'
   ],
   crop: [
-    'crop', 'culture', 'produce', 'commodity', 'item', 'product', 'grain', 'commodities', 'crops', 'cultivar', 'variety', 'cosecha', 'produit',
-    'محصول', 'زراعة', 'منتج', 'اسم_المنتج',
-    'cultivo', 'producto', 'nombre_del_producto'
+    'crop', 'culture', 'produce', 'commodity', 'item', 'product', 'grain', 'commodities', 'crops', 'cultivar', 'variety', 'cosecha', 'produit', 'produit_agricole', 'culture_name',
+    'محصول', 'زراعة', 'منتج', 'اسم_المنتج', 'المحاصيل',
+    'cultivo', 'producto', 'nombre_del_producto', 'cultivo_nombre', 'producto_agricola'
   ],
   date: [
-    'date', 'day', 'jour', 'harvestdate', 'harvest_date', 'datetime', 'harvest_day', 'date_harvest', 'time', 'dateFacture', 'date_facture',
-    'تاريخ', 'التاريخ', 'تاريخ_المعاملة',
-    'fecha', 'fecha_de_transacción', 'fecha_transaccion'
+    'date', 'day', 'jour', 'harvestdate', 'harvest_date', 'datetime', 'harvest_day', 'date_harvest', 'time', 'dateFacture', 'date_facture', 'date_emission', 'date_émission',
+    'تاريخ', 'التاريخ', 'تاريخ_المعاملة', 'تاريخ_الإصدار', 'تاريخ_الحصاد',
+    'fecha', 'fecha_de_transacción', 'fecha_transaccion', 'fecha_emisión', 'fecha_emision', 'fecha_cosecha'
   ],
   location: [
-    'location', 'pays', 'country', 'lieu', 'region', 'area', 'place', 'site', 'zone', 'territory', 'region_name', 'geo', 'loc', 'pays_name',
-    'موقع', 'بلد', 'دولة', 'الدولة_المستوردة',
-    'país', 'pais', 'país_importador', 'pais_importador', 'ubicación', 'ubicacion'
+    'location', 'pays', 'country', 'lieu', 'region', 'area', 'place', 'site', 'zone', 'territory', 'region_name', 'geo', 'loc', 'pays_name', 'lieu_production',
+    'موقع', 'بلد', 'دولة', 'الدولة_المستوردة', 'منطقة', 'موقع_الإنتاج',
+    'país', 'pais', 'país_importador', 'pais_importador', 'ubicación', 'ubicacion', 'región', 'lugar_produccion'
   ],
   quality: [
-    'quality', 'qualité', 'grade', 'standard', 'level', 'rating', 'qualite', 'qual',
-    'جودة', 'الجودة', 'درجة',
-    'calidad', 'nivel'
+    'quality', 'qualité', 'grade', 'standard', 'level', 'rating', 'qualite', 'qual', 'niveau_qualité',
+    'جودة', 'الجودة', 'درجة', 'مستوى_الجودة',
+    'calidad', 'nivel', 'calidad_nivel', 'grado'
   ],
   buyer: [
-    'buyer', 'acheteur', 'purchaser', 'client', 'customer', 'consumer', 'purchaser_name', 'buyer_name', 'acheteur_name',
-    'مشتري', 'المشتري', 'عميل', 'العميل',
-    'comprador', 'cliente'
+    'buyer', 'acheteur', 'purchaser', 'client', 'customer', 'consumer', 'purchaser_name', 'buyer_name', 'acheteur_name', 'client_name', 'nom_client', 'nom_acheteur',
+    'مشتري', 'المشتري', 'عميل', 'العميل', 'اسم_المشتري', 'اسم_العميل',
+    'comprador', 'cliente', 'nombre_del_cliente', 'nombre_comprador', 'cliente_nombre'
   ],
   transaction_id: [
-    'transaction_id', 'transaction_number', 'deal_id', 'order_id', 'numeroFacture', 'numerofacture',
-    'رقم_المعاملة', 'معرف_المعاملة',
-    'número_de_transacción', 'numero_de_transaccion', 'id_transacción', 'id_transaccion'
+    'transaction_id', 'transaction_number', 'deal_id', 'order_id', 'numeroFacture', 'numerofacture', 'facture_numero', 'facture_number', 'invoice_id', 'invoice_no', 'num_facture',
+    'رقم_المعاملة', 'معرف_المعاملة', 'رقم_الفاتورة', 'معرف_الفاتورة',
+    'número_de_transacción', 'numero_de_transaccion', 'id_transacción', 'id_transaccion', 'número_de_factura', 'numero_de_factura', 'factura_numero', 'id_factura'
   ],
   payment_method: [
-    'payment_method', 'payment_type', 'method_of_payment',
-    'طريقة_الدفع', 'طريقة_الدفع',
-    'método_de_pago', 'metodo_de_pago', 'forma_de_pago'
+    'payment_method', 'payment_type', 'method_of_payment', 'mode_paiement', 'moyen_paiement', 'type_paiement',
+    'طريقة_الدفع', 'نوع_الدفع', 'وسيلة_الدفع',
+    'método_de_pago', 'metodo_de_pago', 'forma_de_pago', 'tipo_pago'
   ],
   notes: [
-    'notes', 'remarks', 'comments', 'observations',
-    'ملاحظات', 'تعليقات',
-    'notas', 'observaciones', 'comentarios'
+    'notes', 'remarks', 'comments', 'observations', 'commentaires', 'remarques', 'note',
+    'ملاحظات', 'تعليقات', 'ملاحظة',
+    'notas', 'observaciones', 'comentarios', 'nota'
   ],
   unit: [
-    'unit', 'unité', 'measure', 'measurement',
-    'وحدة', 'الوحدة',
-    'unidad', 'medida'
+    'unit', 'unité', 'measure', 'measurement', 'unit_measure', 'unite_mesure',
+    'وحدة', 'الوحدة', 'قياس',
+    'unidad', 'medida', 'unidad_medida'
   ],
   currency: [
-    'currency', 'monnaie', 'money',
-    'عملة', 'العملة',
-    'moneda', 'divisa'
+    'currency', 'monnaie', 'money', 'devise', 'monnaie_paiement',
+    'عملة', 'العملة', 'نقود',
+    'moneda', 'divisa', 'moneda_pago'
   ],
   supplier: [
-    'supplier', 'fournisseur', 'vendor', 'provider', 'seller',
-    'مزود', 'مورد',
-    'proveedor', 'vendedor'
+    'supplier', 'fournisseur', 'vendor', 'provider', 'seller', 'fournisseur_name', 'nom_fournisseur',
+    'مزود', 'مورد', 'بائع', 'اسم_المورد',
+    'proveedor', 'vendedor', 'nombre_proveedor', 'proveedor_nombre'
+  ],
+  line_total: [
+    'line_total', 'total_line', 'line_amount', 'montant_ligne', 'total_ligne', 'montant_par_ligne',
+    'إجمالي_السطر', 'مبلغ_السطر',
+    'total_línea', 'total_linea', 'importe_línea', 'importe_linea', 'monto_línea', 'monto_linea'
+  ],
+  total_with_tax: [
+    'total_with_tax', 'total_incl_tax', 'montant_ttc', 'montant_avec_tva', 'total_avec_taxes',
+    'المبلغ_مع_الضريبة', 'إجمالي_مع_الضريبة',
+    'total_con_iva', 'total_con_impuestos', 'importe_con_iva', 'monto_con_iva', 'total_con_impuestos'
   ]
 };
+
 
 // Flatten synonyms to reference terms for NLP (ensure unique mappings)
 const referenceTerms = {};
@@ -286,7 +295,7 @@ const normalizeColumnNames = async (columnNames, detectedLang, dataType, sampleD
     pythonProcess.kill();
     console.error('Python script timed out after 10 seconds');
     console.log(`Python script error: Input columns: ${JSON.stringify(inputData.column_names)}, Data type: ${dataType}`);
-  }, 10000);
+  }, 50000);
 
   return new Promise((resolve, reject) => {
     pythonProcess.stdin.write(JSON.stringify(inputData, null, 2), 'utf8');
@@ -307,7 +316,7 @@ const normalizeColumnNames = async (columnNames, detectedLang, dataType, sampleD
         const results = JSON.parse(output);
         const bertNormalizedCols = results.map(result => {
           console.log(`Column "${result.column}" -> "${result.standard}" (score: ${result.score})`);
-          if (result.score < 0.85) {
+          if (result.score < 0.7) {
             console.warn(`Low confidence for "${result.column}", keeping original name`);
             return result.column;
           }
