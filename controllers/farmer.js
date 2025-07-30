@@ -1,5 +1,4 @@
-// backend/controllers/farmerController.js
-import Company from '../models/farmer.js';
+import User from '../models/user.js';
 import multer from 'multer';
 import path from 'path';
 
@@ -9,7 +8,7 @@ const storage = multer.diskStorage({
     if (file.fieldname === 'certification') {
       cb(null, 'uploads/certifications/');
     } else if (file.fieldname === 'imageUser') {
-      cb(null, 'uploads/user-images/'); // New folder for user images
+      cb(null, 'uploads/user-images/');
     }
   },
   filename: (req, file, cb) => {
@@ -33,7 +32,7 @@ const upload = multer({
 }).fields([
   { name: 'certification', maxCount: 1 },
   { name: 'imageUser', maxCount: 1 }
-]); // Handle multiple fields
+]);
 
 export const updateFarmerProfile = async (req, res) => {
   upload(req, res, async (err) => {
@@ -104,23 +103,23 @@ export const updateFarmerProfile = async (req, res) => {
         }
       }
 
-      const updatedFarmer = await Company.findByIdAndUpdate(
+      const updatedUser = await User.findByIdAndUpdate(
         id,
         { $set: updateFields },
         { new: true, runValidators: true }
       );
 
-      if (!updatedFarmer) {
+      if (!updatedUser) {
         return res.status(404).json({
           success: false,
-          message: 'Agriculteur non trouvé',
+          message: 'Utilisateur non trouvé',
         });
       }
 
       res.status(200).json({
         success: true,
         message: 'Profil mis à jour avec succès',
-        data: updatedFarmer,
+        data: updatedUser,
       });
     } catch (error) {
       res.status(500).json({

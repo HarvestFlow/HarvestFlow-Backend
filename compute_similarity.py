@@ -15,10 +15,10 @@ def compute_best_matches(column_names, reference_terms, data_type=None):
     if not valid_columns:
         print("Warning: No valid column names provided", file=sys.stderr)
         return [{"column": col, "best_match": col, "score": 0.0, "standard": col} for col in column_names]
-
+    
     # Debug: Log input columns and data type
     print(f"Input columns: {valid_columns}, Data type: {data_type or 'None'}", file=sys.stderr)
-
+    
     # Encode valid column names with context (append data_type if provided)
     try:
         input_texts = [f"{col} ({data_type})" if data_type else col for col in valid_columns]
